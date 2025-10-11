@@ -118,8 +118,7 @@
 
     <!-- 0. Full-Screen Ripple Container (New Element) --><div id="ripple-container"></div>
     
-    <!-- Toast Notification Area (Non-alert replacement) --><!-- This container is populated by JavaScript for copy feedback --><div id="notification-area" class="fixed top-4 right-4 z-[100] space-y-2"></div>
-
+    <!-- The notification area and related code has been removed for simplification. -->
 
     <!-- Header Navigation Bar --><header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-xl shadow-lg">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
@@ -136,7 +135,7 @@
 
     <!-- 1. Hero Section --><section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         <!-- Background element for parallax --><div id="hero-background" class="opacity-10"></div>
-        <!-- Note: This div already has rounded-2xl --><div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm"> <!-- Changed to rounded-[2rem] for consistency --><h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
+        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm"> <h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
                 Kieran Kelly
             </h1>
             <p class="text-2xl sm:text-4xl font-light text-accent-neon neon-glow scroll-reveal" style="transition-delay: 0.1s;">
@@ -154,7 +153,7 @@
     <!-- 2. Education Section --><section id="education" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal"><span class="text-accent-blue">Education</span></h2>
         
-        <!-- Added rounded-[2rem] here for more rounding --><div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
+        <div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
             <h3 class="text-3xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
             <p class="text-xl text-accent-neon mb-4">Bachelor of Science in Computer Science</p>
             <div class="flex justify-between items-center border-t border-gray-700 pt-4">
@@ -168,7 +167,7 @@
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal">Core <span class="text-accent-blue">Expertise</span></h2>
         
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <!-- Skill Card 1: Python --><!-- Using custom rounded-[2rem] for more rounding --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="90" data-color="accent-neon" style="transition-delay: 0.1s;">
+            <!-- Skill Card 1: Python --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="90" data-color="accent-neon" style="transition-delay: 0.1s;">
                 <h3 class="text-3xl font-bold text-accent-neon mb-4">Python</h3>
                 <p class="text-gray-300 mb-4">Advanced scripting, <strong>AI development</strong>, <strong>API integration</strong>, and creating <strong>games/UI</strong> for frontend applications.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
@@ -177,7 +176,7 @@
                 <p class="text-sm mt-2 text-gray-400">Proficiency: High (90%)</p>
             </div>
             
-            <!-- Skill Card 2: C++ & Embedded Systems --><!-- Using custom rounded-[2rem] for more rounding --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="75" data-color="accent-blue" style="transition-delay: 0.2s;">
+            <!-- Skill Card 2: C++ & Embedded Systems --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="75" data-color="accent-blue" style="transition-delay: 0.2s;">
                 <h3 class="text-3xl font-bold text-accent-blue mb-4">C++</h3>
                 <p class="text-gray-300 mb-4">Coding for <strong>robotics</strong>, <strong>game development</strong>, <strong>backend servers</strong>, and performance-critical system programming.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
@@ -186,7 +185,7 @@
                 <p class="text-sm mt-2 text-gray-400">Proficiency: Advanced (75%)</p>
             </div>
 
-            <!-- Skill Card 3: Ethical Pentesting --><!-- Using custom rounded-[2rem] for more rounding --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="80" data-color="teal-300" style="transition-delay: 0.3s;">
+            <!-- Skill Card 3: Ethical Pentesting --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="80" data-color="teal-300" style="transition-delay: 0.3s;">
                 <h3 class="text-3xl font-bold text-teal-300 mb-4">Ethical Pentesting</h3>
                 <p class="text-gray-300 mb-4">Extensive <strong>Linux experience</strong>, <strong>vulnerability assessment</strong>, <strong>Hack The Box practice</strong>, and <strong>network reconnaissance</strong> using <strong>Kali Linux</strong>.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
@@ -201,7 +200,7 @@
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal">Projects</h2>
 
         <div class="grid md:grid-cols-2 gap-10">
-            <!-- Project 1: AI RC Car (Hardware + Software) --><!-- Using custom rounded-[2rem] for more rounding --><div class="project-card p-6 bg-gray-800 rounded-[2rem] shadow-xl border border-gray-700 transition duration-500 scroll-reveal">
+            <!-- Project 1: AI RC Car (Hardware + Software) --><div class="project-card p-6 bg-gray-800 rounded-[2rem] shadow-xl border border-gray-700 transition duration-500 scroll-reveal">
                 <h3 class="text-3xl font-bold text-accent-blue mb-3">AI RC Car</h3>
                 <p class="text-gray-400 font-mono text-sm mb-4">Tech: C++, Python, NVIDIA Jetson Nano, Intel Realsense</p>
                 <p class="text-gray-300">
@@ -210,7 +209,7 @@
                 <a href="https://github.com/kierank07/ai-rc-car-repo" target="_blank" class="mt-4 inline-block text-accent-blue hover:text-teal-400 font-bold">View Source (GitHub &rarr;)</a>
             </div>
 
-            <!-- Project 2: PCB Business Card (Hardware + Software) --><!-- Using custom rounded-[2rem] for more rounding --><div class="project-card p-6 bg-gray-800 rounded-[2rem] shadow-xl border border-gray-700 transition duration-500 scroll-reveal" style="transition-delay: 0.2s;">
+            <!-- Project 2: PCB Business Card (Hardware + Software) --><div class="project-card p-6 bg-gray-800 rounded-[2rem] shadow-xl border border-gray-700 transition duration-500 scroll-reveal" style="transition-delay: 0.2s;">
                 <h3 class="text-3xl font-bold text-accent-neon mb-3">PCB Business Card</h3>
                 <p class="text-gray-400 font-mono text-sm mb-4">Tech: NFC, Custom PCB Design, Surface Mount LEDs, Firmware</p>
                 <p class="text-gray-300">
@@ -231,7 +230,7 @@
                 "If you want to make the world a better place, take a look at yourself and make a change."<br>-Hooo
             </p>
             <div class="mt-10 scroll-reveal" style="transition-delay: 0.3s;">
-                <!-- Replaced with clipboard copy handler --><a href="#" onclick="copyToClipboard(event, 'kieranjokelly@gmail.com')" class="text-lg font-mono text-gray-400 hover:text-accent-neon transition duration-300">kieranjokelly@gmail.com</a>
+                <!-- Reverted to standard mailto link --><a href="mailto:kieranjokelly@gmail.com" class="text-lg font-mono text-gray-400 hover:text-accent-neon transition duration-300">kieranjokelly@gmail.com</a>
             </div>
         </div>
     </section>
@@ -239,18 +238,16 @@
     <!-- 6. Contact Section --><section id="contact" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-5xl font-bold text-center mb-12 scroll-reveal"><span class="text-accent-neon">Connect</span></h2>
         
-        <!-- Business Card / Contact Info --><!-- Using custom rounded-[2rem] for more rounding --><div class="max-w-md mx-auto p-6 bg-gray-800 rounded-[2rem] border border-gray-700 shadow-2xl scroll-reveal contact-card" style="transition-delay: 0.2s;">
+        <!-- Business Card / Contact Info --><div class="max-w-md mx-auto p-6 bg-gray-800 rounded-[2rem] border border-gray-700 shadow-2xl scroll-reveal contact-card" style="transition-delay: 0.2s;">
                <div class="flex flex-col sm:flex-row items-center justify-between">
-                <div class="text-center sm:text-left mb-6 sm:mb-0">
+                <div class="text-center sm:text-left mb-6 sm:mb-0 w-full sm:w-auto">
                     <p class="text-2xl font-bold text-white">Kieran Kelly</p>
                     <p class="text-accent-neon font-mono mt-1 mb-6">Developer & Hacker</p>
                     
-                    <p class="text-lg text-gray-300 mt-4">
-                        <!-- Changed to use the copyToClipboard function --><a href="#" onclick="copyToClipboard(event, 'kieranjokelly@gmail.com')" class="hover:text-accent-blue transition duration-300">kieranjokelly@gmail.com</a>
-                    </p>
-                    <p class="text-lg text-gray-300">
-                        <!-- Changed to use the copyToClipboard function --><a href="#" onclick="copyToClipboard(event, '+1 240 268 9430')" class="hover:text-accent-blue transition duration-300">+1 240 268 9430</a>
-                    </p>
+                    <div class="flex flex-col space-y-2 mt-4">
+                        <!-- Reverted to standard mailto link --><a href="mailto:kieranjokelly@gmail.com" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">kieranjokelly@gmail.com</a>
+                        <!-- Reverted to standard tel link --><a href="tel:+12402689430" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">+1 240 268 9430</a>
+                    </div>
                 </div>
                  <!-- Visual representation of the business card PCB with Times New Roman 'K' logo --><div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-xl">
                     <p class="text-5xl font-serif text-accent-neon" style="font-family: 'Times New Roman', serif;">K</p>
@@ -260,19 +257,22 @@
 
         <div class="flex justify-center space-x-8 mt-12 scroll-reveal" style="transition-delay: 0.1s;">
             <!-- GitHub Icon/Link (using Lucide icon) --><a href="https://github.com/kierank07" target="_blank" class="text-gray-400 hover:text-accent-neon transition duration-300">
-                <i data-lucide="github" class="w-10 h-10"></i>
+                <i data-lucide="github" class-name="w-10 h-10"></i>
             </a>
             <!-- Instagram Icon/Link (using Lucide icon) --><a href="https://instagram.com/stupidlife07" target="_blank" class="text-gray-400 hover:text-accent-blue transition duration-300">
-                <i data-lucide="instagram" class="w-10 h-10"></i>
+                <i data-lucide="instagram" class-name="w-10 h-10"></i>
             </a>
         </div>
     </section>
+
+    <!-- The notification area container has been removed. -->
 
     <!-- Footer --><footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800">
         <p>&copy; 2025 Kieran Kelly.</p>
     </footer>
 
-    <!-- JavaScript for Scroll-Reveal Animation and Interactivity --><script>
+    <!-- JavaScript for Scroll-Reveal Animation and Interactivity -->
+    <script>
         // Use the Intersection Observer API for efficient, modern scroll animations
         document.addEventListener('DOMContentLoaded', () => {
             
@@ -377,50 +377,8 @@
                     // If not at the top, the default anchor action (scrolling to #hero) will proceed
                 });
             }
-
-
-            // --- 5. Notification Handler (Non-alert replacement) ---
-            const notificationArea = document.getElementById('notification-area');
-
-            function showNotification(message, bgColorClass) {
-                const notification = document.createElement('div');
-                // Use fixed classes for the dark theme context
-                notification.className = `p-4 rounded-xl shadow-xl text-primary-dark ${bgColorClass} transition-opacity duration-300 opacity-0 font-bold max-w-xs text-sm`;
-                notification.textContent = message;
-
-                notificationArea.appendChild(notification);
-                
-                // Fade in
-                setTimeout(() => notification.style.opacity = '1', 10);
-
-                // Fade out and remove
-                setTimeout(() => {
-                    notification.style.opacity = '0';
-                    notification.addEventListener('transitionend', () => notification.remove());
-                }, 2000);
-            }
-
-            // --- 6. Clipboard Copy Function (using document.execCommand) ---
-            window.copyToClipboard = (event, text) => {
-                event.preventDefault(); // Stop navigation
-                
-                // Create a temporary textarea element to hold the text
-                const tempInput = document.createElement('textarea');
-                tempInput.value = text;
-                document.body.appendChild(tempInput);
-
-                // Select the text and copy it
-                tempInput.select();
-                try {
-                    document.execCommand('copy');
-                    // Provide feedback
-                    showNotification('Copied to clipboard: ' + text, 'bg-accent-neon');
-                } catch (err) {
-                    // Fallback feedback
-                    showNotification('Copy failed.', 'bg-red-500');
-                }
-                document.body.removeChild(tempInput);
-            };
+            
+            // NOTE: All notification-related JavaScript functions have been removed.
         });
     </script>
 
