@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon link added here -->
+    <link rel="icon" type="image/png" href="images/favicon.png">
     <title>Kieran Kelly | Software Developer & Hardware Hacker</title>
-    <link rel="icon" type="image/png" href="favicon.png">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Configure Tailwind to use Inter font and define custom colors -->
@@ -54,11 +55,16 @@
         .neon-glow {
             text-shadow: 0 0 5px rgba(45, 212, 191, 0.5), 0 0 10px rgba(45, 212, 191, 0.3);
         }
+        
+        /* Apply subtle hover effect and enhanced shadow to cards (Apple style depth) */
+        .project-card, .skill-card, .contact-card {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
 
-        /* Apply subtle hover effect to cards */
-        .project-card:hover {
+        .project-card:hover, .skill-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(45, 212, 191, 0.1);
+            box-shadow: 0 15px 30px rgba(45, 212, 191, 0.15), 0 5px 10px rgba(45, 212, 191, 0.05);
         }
 
         /* Parallax effect on Hero section */
@@ -68,20 +74,53 @@
             left: 0;
             width: 100%;
             height: 100%;
+            /* Using a subtle dark placeholder image to enhance depth */
             background-image: url('https://placehold.co/1600x900/1e293b/94a3b8?text=CODE+TO+CIRCUITRY');
             background-size: cover;
             background-position: center center;
             z-index: 0;
             will-change: transform; /* Hint for smooth GPU acceleration */
         }
+        
+        /* --- FULL-SCREEN RIPPLE EFFECT CSS (Polished) --- */
+        #ripple-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none; /* Allows clicks to pass through */
+            z-index: 99; /* Below the header, above the content */
+            overflow: hidden;
+        }
+        .ripple {
+            position: absolute;
+            width: 5px; 
+            height: 5px;
+            background-color: rgba(45, 212, 191, 0.9); /* Neon color, slightly brighter */
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: ripple-scale-full 0.4s cubic-bezier(0.16, 1, 0.3, 1); /* Smoother, faster curve */
+        }
+        @keyframes ripple-scale-full {
+            to {
+                transform: translate(-50%, -50%) scale(350); 
+                opacity: 0;
+            }
+        }
+        /* --- END RIPPLE EFFECT CSS --- */
     </style>
 </head>
 <body class="font-sans">
 
+    <!-- 0. Full-Screen Ripple Container (New Element) -->
+    <div id="ripple-container"></div>
+
     <!-- Header Navigation Bar -->
-    <header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-md shadow-lg">
+    <header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-xl shadow-lg">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <a href="#hero" class="text-xl font-bold text-accent-neon neon-glow font-mono tracking-wider">K.K.</a>
+            <!-- Added id and class for ripple effect -->
+            <a href="#hero" id="header-logo" class="header-logo text-xl font-bold text-accent-neon neon-glow font-mono tracking-wider">K.K.</a>
             <div class="space-x-4">
                 <a href="#education" class="text-gray-300 hover:text-accent-blue transition duration-300 hidden sm:inline">Education</a>
                 <a href="#skills" class="text-gray-300 hover:text-accent-blue transition duration-300">Skills</a>
@@ -96,14 +135,14 @@
     <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         <!-- Background element for parallax -->
         <div id="hero-background" class="opacity-10"></div>
-        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10">
+        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-2xl backdrop-blur-sm">
             <h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
                 Kieran Kelly
             </h1>
             <p class="text-2xl sm:text-4xl font-light text-accent-neon neon-glow scroll-reveal" style="transition-delay: 0.1s;">
                 Software Developer and Hardware Hacker
             </p>
-            <p class="mt-8 text-lg text-gray-400 scroll-reveal" style="transition-delay: 0.2s;">
+            <p class="mt-8 text-lg text-gray-200 scroll-reveal" style="transition-delay: 0.2s;">
                 Digital to Physical
             </p>
             <a href="#skills" class="mt-12 inline-block px-8 py-3 bg-accent-neon text-gray-900 font-bold rounded-full hover:bg-teal-300 transition duration-300 shadow-xl scroll-reveal" style="transition-delay: 0.3s;">
@@ -116,7 +155,7 @@
     <section id="education" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal"><span class="text-accent-blue">Education</span></h2>
         
-        <div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-xl shadow-2xl scroll-reveal" style="transition-delay: 0.1s;">
+        <div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-xl shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
             <h3 class="text-3xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
             <p class="text-xl text-accent-neon mb-4">Bachelor of Science in Computer Science</p>
             <div class="flex justify-between items-center border-t border-gray-700 pt-4">
@@ -133,7 +172,7 @@
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <!-- Skill Card 1: Python -->
             <div class="p-8 border border-gray-700 bg-gray-800 rounded-xl scroll-reveal skill-card" data-percent="90" data-color="accent-neon" style="transition-delay: 0.1s;">
-                <h3 class="text-3xl font-bold text-accent-neon mb-4">Python Mastery</h3>
+                <h3 class="text-3xl font-bold text-accent-neon mb-4">Python</h3>
                 <p class="text-gray-300 mb-4">Advanced scripting, <strong>AI development</strong>, <strong>API integration</strong>, and creating <strong>games/UI</strong> for frontend applications.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
                     <div class="skill-bar-fill h-full rounded-full bg-accent-neon" style="width: 0%; transition: width 1.5s ease-out;"></div>
@@ -143,7 +182,7 @@
             
             <!-- Skill Card 2: C++ & Embedded Systems -->
             <div class="p-8 border border-gray-700 bg-gray-800 rounded-xl scroll-reveal skill-card" data-percent="75" data-color="accent-blue" style="transition-delay: 0.2s;">
-                <h3 class="text-3xl font-bold text-accent-blue mb-4">C++ & Low-Level</h3>
+                <h3 class="text-3xl font-bold text-accent-blue mb-4">C++</h3>
                 <p class="text-gray-300 mb-4">Coding for <strong>robotics</strong>, <strong>game development</strong>, <strong>backend servers</strong>, and performance-critical system programming.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
                     <div class="skill-bar-fill h-full rounded-full bg-accent-blue" style="width: 0%; transition: width 1.5s ease-out;"></div>
@@ -170,21 +209,17 @@
         <div class="grid md:grid-cols-2 gap-10">
             <!-- Project 1: AI RC Car (Hardware + Software) -->
             <div class="project-card p-6 bg-gray-800 rounded-xl shadow-xl border border-gray-700 transition duration-500 scroll-reveal">
-                <!-- Placeholder for Autonomous RC Car -->
-                <img src="https://placehold.co/600x400/1e293b/38bdf8?text=Autonomous+System+Schematic" alt="AI RC Car Project" class="rounded-lg mb-6 border-2 border-accent-blue opacity-90">
-                <h3 class="text-3xl font-bold text-accent-blue mb-3">Autonomous AI RC Car</h3>
+                <h3 class="text-3xl font-bold text-accent-blue mb-3">AI RC Car</h3>
                 <p class="text-gray-400 font-mono text-sm mb-4">Tech: C++, Python, NVIDIA Jetson Nano, Intel Realsense</p>
                 <p class="text-gray-300">
-                    Engineered an autonomous RC car using a <strong>NVIDIA Jetson Nano</strong> and an <strong>Intel Realsense camera</strong>. The system uses on-board processing to view its surroundings, avoid obstacles, and navigate. Project includes custom <strong>3D printed and CNC-milled parts</strong>, servo control, and complex battery management systems.
+                    Engineered an RC car using a <strong>NVIDIA Jetson Nano</strong> and an <strong>Intel Realsense camera</strong>. The system uses on-board processing to view its surroundings, avoid obstacles, and navigate. Project includes custom <strong>3D printed and CNC-milled parts</strong>, servo control, and complex battery management systems.
                 </p>
                 <a href="https://github.com/kierank07/ai-rc-car-repo" target="_blank" class="mt-4 inline-block text-accent-blue hover:text-teal-400 font-bold">View Source (GitHub &rarr;)</a>
             </div>
 
             <!-- Project 2: PCB Business Card (Hardware + Software) -->
             <div class="project-card p-6 bg-gray-800 rounded-xl shadow-xl border border-gray-700 transition duration-500 scroll-reveal" style="transition-delay: 0.2s;">
-                <!-- Reverted to a generic placeholder for PCB/NFC -->
-                <img src="https://placehold.co/600x400/1e293b/2dd4bf?text=Custom+PCB+%2B+NFC+Technology" alt="Interactive PCB Business Card Render" class="rounded-lg mb-6 border-2 border-accent-neon opacity-90">
-                <h3 class="text-3xl font-bold text-accent-neon mb-3">Interactive PCB Business Card</h3>
+                <h3 class="text-3xl font-bold text-accent-neon mb-3">PCB Business Card</h3>
                 <p class="text-gray-400 font-mono text-sm mb-4">Tech: NFC, Custom PCB Design, Surface Mount LEDs, Firmware</p>
                 <p class="text-gray-300">
                     Engineered a custom <strong>Printed Circuit Board (PCB)</strong> business card. The card integrates an <strong>NFC tag</strong> linked to this website and uses inductive power from the tapping phone to light up <strong>onboard LEDs</strong>, demonstrating expertise in low-power electronics and <strong>physical-layer interaction</strong>.
@@ -216,7 +251,7 @@
         <h2 class="text-5xl font-bold text-center mb-12 scroll-reveal"><span class="text-accent-neon">Connect</span></h2>
         
         <!-- Business Card / Contact Info -->
-        <div class="max-w-md mx-auto p-6 bg-gray-800 rounded-xl border border-gray-700 shadow-2xl scroll-reveal" style="transition-delay: 0.2s;">
+        <div class="max-w-md mx-auto p-6 bg-gray-800 rounded-xl border border-gray-700 shadow-2xl scroll-reveal contact-card" style="transition-delay: 0.2s;">
              <div class="flex flex-col sm:flex-row items-center justify-between">
                 <div class="text-center sm:text-left mb-6 sm:mb-0">
                     <p class="text-2xl font-bold text-white">Kieran Kelly</p>
@@ -230,7 +265,7 @@
                     </p>
                 </div>
                  <!-- Visual representation of the business card PCB with Times New Roman 'K' logo -->
-                <div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-neon">
+                <div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-xl">
                     <p class="text-5xl font-serif text-accent-neon" style="font-family: 'Times New Roman', serif;">K</p>
                 </div>
             </div>
@@ -309,14 +344,49 @@
             });
 
 
-            // --- 3. Parallax Effect on Hero Background ---
+            // --- 3. Parallax Effect on Hero Background (Enhanced for Apple feel) ---
             const heroBackground = document.getElementById('hero-background');
             if (heroBackground) {
                 window.addEventListener('scroll', () => {
                     const scrollY = window.scrollY;
-                    // Move the background 5% of the scroll distance in the opposite direction
-                    // The 'translateY' is slightly negative to give a subtle effect
-                    heroBackground.style.transform = `translateY(${scrollY * 0.05}px)`;
+                    // Increased the multiplier from 0.05 to 0.2 for a more noticeable parallax depth effect
+                    heroBackground.style.transform = `translateY(${scrollY * 0.2}px)`;
+                });
+            }
+
+            // --- 4. Header Logo Ripple Effect ---
+            const headerLogo = document.getElementById('header-logo');
+            const rippleContainer = document.getElementById('ripple-container');
+
+            if (headerLogo && rippleContainer) {
+                headerLogo.addEventListener('click', (e) => {
+                    // Check if scroll is at the very top (or very close)
+                    if (window.scrollY < 10) {
+                        e.preventDefault(); 
+
+                        // Get logo position relative to the viewport
+                        const rect = headerLogo.getBoundingClientRect();
+                        
+                        // Calculate center of the logo element
+                        const x = rect.left + rect.width / 2;
+                        const y = rect.top + rect.height / 2;
+
+                        // Create ripple element
+                        const ripple = document.createElement('div');
+                        ripple.classList.add('ripple');
+                        
+                        // Position the ripple relative to the viewport center where the logo is
+                        ripple.style.left = `${x}px`;
+                        ripple.style.top = `${y}px`;
+
+                        rippleContainer.appendChild(ripple);
+
+                        // Clean up the ripple element after the animation finishes
+                        ripple.addEventListener('animationend', () => {
+                            ripple.remove();
+                        });
+                    }
+                    // If not at the top, the default anchor action (scrolling to #hero) will proceed
                 });
             }
         });
