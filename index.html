@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Favicon link added here -->
-    <link rel="icon" type="image/png" href="images/favicon.png">
+    
+    <!-- Favicon: Inline SVG for the 'K' logo --><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50%25' y='90%25' font-size='90' fill='%232dd4bf' text-anchor='middle' font-family='Times New Roman, serif'%3EK%3C/text%3E%3C/svg%3E">
+    
     <title>Kieran Kelly | Software Developer & Hardware Hacker</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configure Tailwind to use Inter font and define custom colors -->
-    <script>
+    
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons --><script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Configure Tailwind to use Inter font and define custom colors --><script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -60,9 +62,10 @@
         .project-card, .skill-card, .contact-card {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 10px 20px rgba(0, 0, 0, 0.2);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 2rem; /* Significantly more rounded edges */
         }
 
-        .project-card:hover, .skill-card:hover {
+        .project-card:hover, .skill-card:hover, .contact-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 30px rgba(45, 212, 191, 0.15), 0 5px 10px rgba(45, 212, 191, 0.05);
         }
@@ -113,14 +116,14 @@
 </head>
 <body class="font-sans">
 
-    <!-- 0. Full-Screen Ripple Container (New Element) -->
-    <div id="ripple-container"></div>
+    <!-- 0. Full-Screen Ripple Container (New Element) --><div id="ripple-container"></div>
+    
+    <!-- Toast Notification Area (Non-alert replacement) --><!-- This container is populated by JavaScript for copy feedback --><div id="notification-area" class="fixed top-4 right-4 z-[100] space-y-2"></div>
 
-    <!-- Header Navigation Bar -->
-    <header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-xl shadow-lg">
+
+    <!-- Header Navigation Bar --><header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-xl shadow-lg">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <!-- Added id and class for ripple effect -->
-            <a href="#hero" id="header-logo" class="header-logo text-xl font-bold text-accent-neon neon-glow font-mono tracking-wider">K.K.</a>
+            <!-- Added id and class for ripple effect --><a href="#hero" id="header-logo" class="header-logo text-xl font-bold text-accent-neon neon-glow font-mono tracking-wider">K.K.</a>
             <div class="space-x-4">
                 <a href="#education" class="text-gray-300 hover:text-accent-blue transition duration-300 hidden sm:inline">Education</a>
                 <a href="#skills" class="text-gray-300 hover:text-accent-blue transition duration-300">Skills</a>
@@ -131,12 +134,9 @@
         </nav>
     </header>
 
-    <!-- 1. Hero Section -->
-    <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-        <!-- Background element for parallax -->
-        <div id="hero-background" class="opacity-10"></div>
-        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-2xl backdrop-blur-sm">
-            <h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
+    <!-- 1. Hero Section --><section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+        <!-- Background element for parallax --><div id="hero-background" class="opacity-10"></div>
+        <!-- Note: This div already has rounded-2xl --><div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm"> <!-- Changed to rounded-[2rem] for consistency --><h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
                 Kieran Kelly
             </h1>
             <p class="text-2xl sm:text-4xl font-light text-accent-neon neon-glow scroll-reveal" style="transition-delay: 0.1s;">
@@ -151,11 +151,10 @@
         </div>
     </section>
     
-    <!-- 2. Education Section -->
-    <section id="education" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- 2. Education Section --><section id="education" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal"><span class="text-accent-blue">Education</span></h2>
         
-        <div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-xl shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
+        <!-- Added rounded-[2rem] here for more rounding --><div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
             <h3 class="text-3xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
             <p class="text-xl text-accent-neon mb-4">Bachelor of Science in Computer Science</p>
             <div class="flex justify-between items-center border-t border-gray-700 pt-4">
@@ -165,13 +164,11 @@
         </div>
     </section>
 
-    <!-- 3. Skills Section -->
-    <section id="skills" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800">
+    <!-- 3. Skills Section --><section id="skills" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800">
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal">Core <span class="text-accent-blue">Expertise</span></h2>
         
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <!-- Skill Card 1: Python -->
-            <div class="p-8 border border-gray-700 bg-gray-800 rounded-xl scroll-reveal skill-card" data-percent="90" data-color="accent-neon" style="transition-delay: 0.1s;">
+            <!-- Skill Card 1: Python --><!-- Using custom rounded-[2rem] for more rounding --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="90" data-color="accent-neon" style="transition-delay: 0.1s;">
                 <h3 class="text-3xl font-bold text-accent-neon mb-4">Python</h3>
                 <p class="text-gray-300 mb-4">Advanced scripting, <strong>AI development</strong>, <strong>API integration</strong>, and creating <strong>games/UI</strong> for frontend applications.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
@@ -180,8 +177,7 @@
                 <p class="text-sm mt-2 text-gray-400">Proficiency: High (90%)</p>
             </div>
             
-            <!-- Skill Card 2: C++ & Embedded Systems -->
-            <div class="p-8 border border-gray-700 bg-gray-800 rounded-xl scroll-reveal skill-card" data-percent="75" data-color="accent-blue" style="transition-delay: 0.2s;">
+            <!-- Skill Card 2: C++ & Embedded Systems --><!-- Using custom rounded-[2rem] for more rounding --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="75" data-color="accent-blue" style="transition-delay: 0.2s;">
                 <h3 class="text-3xl font-bold text-accent-blue mb-4">C++</h3>
                 <p class="text-gray-300 mb-4">Coding for <strong>robotics</strong>, <strong>game development</strong>, <strong>backend servers</strong>, and performance-critical system programming.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
@@ -190,8 +186,7 @@
                 <p class="text-sm mt-2 text-gray-400">Proficiency: Advanced (75%)</p>
             </div>
 
-            <!-- Skill Card 3: Ethical Pentesting -->
-            <div class="p-8 border border-gray-700 bg-gray-800 rounded-xl scroll-reveal skill-card" data-percent="80" data-color="teal-300" style="transition-delay: 0.3s;">
+            <!-- Skill Card 3: Ethical Pentesting --><!-- Using custom rounded-[2rem] for more rounding --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="80" data-color="teal-300" style="transition-delay: 0.3s;">
                 <h3 class="text-3xl font-bold text-teal-300 mb-4">Ethical Pentesting</h3>
                 <p class="text-gray-300 mb-4">Extensive <strong>Linux experience</strong>, <strong>vulnerability assessment</strong>, <strong>Hack The Box practice</strong>, and <strong>network reconnaissance</strong> using <strong>Kali Linux</strong>.</p>
                 <div class="h-2 bg-gray-700 rounded-full mt-6">
@@ -202,13 +197,11 @@
         </div>
     </section>
 
-    <!-- 4. Projects Section -->
-    <section id="projects" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800">
+    <!-- 4. Projects Section --><section id="projects" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800">
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal">Projects</h2>
 
         <div class="grid md:grid-cols-2 gap-10">
-            <!-- Project 1: AI RC Car (Hardware + Software) -->
-            <div class="project-card p-6 bg-gray-800 rounded-xl shadow-xl border border-gray-700 transition duration-500 scroll-reveal">
+            <!-- Project 1: AI RC Car (Hardware + Software) --><!-- Using custom rounded-[2rem] for more rounding --><div class="project-card p-6 bg-gray-800 rounded-[2rem] shadow-xl border border-gray-700 transition duration-500 scroll-reveal">
                 <h3 class="text-3xl font-bold text-accent-blue mb-3">AI RC Car</h3>
                 <p class="text-gray-400 font-mono text-sm mb-4">Tech: C++, Python, NVIDIA Jetson Nano, Intel Realsense</p>
                 <p class="text-gray-300">
@@ -217,8 +210,7 @@
                 <a href="https://github.com/kierank07/ai-rc-car-repo" target="_blank" class="mt-4 inline-block text-accent-blue hover:text-teal-400 font-bold">View Source (GitHub &rarr;)</a>
             </div>
 
-            <!-- Project 2: PCB Business Card (Hardware + Software) -->
-            <div class="project-card p-6 bg-gray-800 rounded-xl shadow-xl border border-gray-700 transition duration-500 scroll-reveal" style="transition-delay: 0.2s;">
+            <!-- Project 2: PCB Business Card (Hardware + Software) --><!-- Using custom rounded-[2rem] for more rounding --><div class="project-card p-6 bg-gray-800 rounded-[2rem] shadow-xl border border-gray-700 transition duration-500 scroll-reveal" style="transition-delay: 0.2s;">
                 <h3 class="text-3xl font-bold text-accent-neon mb-3">PCB Business Card</h3>
                 <p class="text-gray-400 font-mono text-sm mb-4">Tech: NFC, Custom PCB Design, Surface Mount LEDs, Firmware</p>
                 <p class="text-gray-300">
@@ -229,8 +221,7 @@
         </div>
     </section>
 
-    <!-- 5. About Section -->
-    <section id="about" class="py-24 bg-gray-800 border-t border-b border-gray-700">
+    <!-- 5. About Section --><section id="about" class="py-24 bg-gray-800 border-t border-b border-gray-700">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 class="text-5xl font-bold mb-8 scroll-reveal">My <span class="text-white">Philosophy</span></h2>
             <p class="text-xl text-gray-300 leading-relaxed scroll-reveal" style="transition-delay: 0.1s;">
@@ -240,59 +231,56 @@
                 "If you want to make the world a better place, take a look at yourself and make a change."<br>-Hooo
             </p>
             <div class="mt-10 scroll-reveal" style="transition-delay: 0.3s;">
-                <!-- Replaced with email from resume -->
-                <a href="mailto:kieranjokelly@gmail.com" class="text-lg font-mono text-gray-400 hover:text-accent-neon transition duration-300">kieranjokelly@gmail.com</a>
+                <!-- Replaced with clipboard copy handler --><a href="#" onclick="copyToClipboard(event, 'kieranjokelly@gmail.com')" class="text-lg font-mono text-gray-400 hover:text-accent-neon transition duration-300">kieranjokelly@gmail.com</a>
             </div>
         </div>
     </section>
 
-    <!-- 6. Contact Section -->
-    <section id="contact" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- 6. Contact Section --><section id="contact" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-5xl font-bold text-center mb-12 scroll-reveal"><span class="text-accent-neon">Connect</span></h2>
         
-        <!-- Business Card / Contact Info -->
-        <div class="max-w-md mx-auto p-6 bg-gray-800 rounded-xl border border-gray-700 shadow-2xl scroll-reveal contact-card" style="transition-delay: 0.2s;">
-             <div class="flex flex-col sm:flex-row items-center justify-between">
+        <!-- Business Card / Contact Info --><!-- Using custom rounded-[2rem] for more rounding --><div class="max-w-md mx-auto p-6 bg-gray-800 rounded-[2rem] border border-gray-700 shadow-2xl scroll-reveal contact-card" style="transition-delay: 0.2s;">
+               <div class="flex flex-col sm:flex-row items-center justify-between">
                 <div class="text-center sm:text-left mb-6 sm:mb-0">
                     <p class="text-2xl font-bold text-white">Kieran Kelly</p>
                     <p class="text-accent-neon font-mono mt-1 mb-6">Developer & Hacker</p>
                     
                     <p class="text-lg text-gray-300 mt-4">
-                        <a href="mailto:kieranjokelly@gmail.com" class="hover:text-accent-blue transition duration-300">kieranjokelly@gmail.com</a>
+                        <!-- Changed to use the copyToClipboard function --><a href="#" onclick="copyToClipboard(event, 'kieranjokelly@gmail.com')" class="hover:text-accent-blue transition duration-300">kieranjokelly@gmail.com</a>
                     </p>
                     <p class="text-lg text-gray-300">
-                        <a href="tel:+12402689430" class="hover:text-accent-blue transition duration-300">+1 240 268 9430</a>
+                        <!-- Changed to use the copyToClipboard function --><a href="#" onclick="copyToClipboard(event, '+1 240 268 9430')" class="hover:text-accent-blue transition duration-300">+1 240 268 9430</a>
                     </p>
                 </div>
-                 <!-- Visual representation of the business card PCB with Times New Roman 'K' logo -->
-                <div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-xl">
+                 <!-- Visual representation of the business card PCB with Times New Roman 'K' logo --><div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-xl">
                     <p class="text-5xl font-serif text-accent-neon" style="font-family: 'Times New Roman', serif;">K</p>
                 </div>
             </div>
         </div>
 
         <div class="flex justify-center space-x-8 mt-12 scroll-reveal" style="transition-delay: 0.1s;">
-            <!-- GitHub Icon/Link (using inline SVG for simplicity) -->
-            <a href="https://github.com/kierank07" target="_blank" class="text-gray-400 hover:text-accent-neon transition duration-300">
-                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.372 0 0 5.373 0 12c0 5.302 3.438 9.8 8.205 11.385.6.11.82-.26.82-.577 0-.285-.01-1.042-.015-2.043-3.338.725-4.043-1.61-4.043-1.61-.545-1.38-1.332-1.748-1.332-1.748-1.087-.743.082-.728.082-.728 1.205.084 1.838 1.238 1.838 1.238 1.065 1.834 2.793 1.305 3.488.998.108-.775.418-1.305.762-1.603-2.665-.3-5.466-1.332-5.466-5.93 0-1.309.467-2.375 1.235-3.212-.125-.3-.535-1.52.117-3.178 0 0 1.008-.32 3.3-.997 1.007-.276 2.074-.414 3.13-.414s2.123.138 3.13.414c2.292.677 3.3 1 3.3 1 .652 1.658.243 2.878.118 3.178.767.837 1.232 1.903 1.232 3.212 0 4.61-2.8 5.626-5.474 5.923.43.37.82.9.82 1.815 0 1.306-.01 2.502-.01 2.835 0 .318.216.69.825.575C20.562 21.8 24 17.306 24 12c0-6.627-5.373-12-12-12z"/></svg>
+            <!-- GitHub Icon/Link (using Lucide icon) --><a href="https://github.com/kierank07" target="_blank" class="text-gray-400 hover:text-accent-neon transition duration-300">
+                <i data-lucide="github" class="w-10 h-10"></i>
             </a>
-            <!-- Instagram Icon/Link (using inline SVG) -->
-            <a href="https://instagram.com/stupidlife07" target="_blank" class="text-gray-400 hover:text-accent-blue transition duration-300">
-                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.013 4.85.071 1.171.055 1.935.244 2.593.513.636.262 1.13.65 1.637 1.157s.895 1.001 1.158 1.637c.269.658.458 1.422.513 2.593.058 1.266.071 1.646.071 4.85s-.013 3.584-.071 4.85c-.055 1.171-.244 1.935-.513 2.593-.262.636-.65 1.13-1.157 1.637s-1.001.895-1.637 1.158c-.658.269-1.422.458-2.593.513-1.266.058-1.646.071-4.85.071s-3.584-.013-4.85-.071c-1.171-.055-1.935-.244-2.593-.513-.636-.262-1.13-.65-1.637-1.157s-.895-1.001-1.158-1.637c-.269-.658-.458-1.422-.513-2.593-.058-1.266-.071-1.646-.071-4.85s.013-3.584.071-4.85c.055-1.171.244-1.935.513-2.593.262-.636.65-1.13 1.157-1.637s1.001-.895 1.637-1.158c.658-.269 1.422-.458 2.593-.513 1.266-.058 1.646-.071 4.85-.071zm0-2.163c-3.26 0-3.665.013-4.947.072-1.267.058-2.152.261-2.906.564-.785.321-1.464.757-2.174 1.467s-1.146 1.389-1.467 2.174c-.303.754-.506 1.639-.564 2.906-.059 1.282-.072 1.687-.072 4.947s.013 3.665.072 4.947c.058 1.267.261 2.152.564 2.906.321.785.757 1.464 1.467 2.174s1.389 1.146 2.174 1.467c.754.303 1.639.506 2.906.564 1.282.059 1.687.072 4.947.072s3.665-.013 4.947-.072c1.267-.058 2.152-.261 2.906-.564.785-.321 1.464-.757 2.174-1.467s1.146-1.389 1.467-2.174c.303-.754.506-1.639.564-2.906.059-1.282.072-1.687.072-4.947s-.013-3.665-.072-4.947c-.058-1.267-.261-2.152-.564-2.906-.321-.785-.757-1.464-1.467-2.174s-1.389-1.146-2.174-1.467c-.754-.303-1.639-.506-2.906-.564-1.282-.059-1.687-.072-4.947-.072zm0 3.653c3.551 0 6.43 2.879 6.43 6.43s-2.879 6.43-6.43 6.43-6.43-2.879-6.43-6.43 2.879-6.43 6.43-6.43zm0 2.163c-2.35 0-4.267 1.917-4.267 4.267s1.917 4.267 4.267 4.267 4.267-1.917 4.267-4.267-1.917-4.267-4.267-4.267zm6.702-3.132c-.525 0-.951.426-.951.951s.426.951.951.951.951-.426.951-.951-.426-.951-.951-.951z"/></svg>
+            <!-- Instagram Icon/Link (using Lucide icon) --><a href="https://instagram.com/stupidlife07" target="_blank" class="text-gray-400 hover:text-accent-blue transition duration-300">
+                <i data-lucide="instagram" class="w-10 h-10"></i>
             </a>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800">
+    <!-- Footer --><footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800">
         <p>&copy; 2025 Kieran Kelly.</p>
     </footer>
 
-    <!-- JavaScript for Scroll-Reveal Animation and Interactivity -->
-    <script>
+    <!-- JavaScript for Scroll-Reveal Animation and Interactivity --><script>
         // Use the Intersection Observer API for efficient, modern scroll animations
         document.addEventListener('DOMContentLoaded', () => {
             
+            // --- 0. Initialize Lucide Icons ---
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
             // --- 1. Scroll Reveal (Fade In/Slide Up) ---
             const scrollRevealOptions = {
                 root: null,
@@ -389,6 +377,50 @@
                     // If not at the top, the default anchor action (scrolling to #hero) will proceed
                 });
             }
+
+
+            // --- 5. Notification Handler (Non-alert replacement) ---
+            const notificationArea = document.getElementById('notification-area');
+
+            function showNotification(message, bgColorClass) {
+                const notification = document.createElement('div');
+                // Use fixed classes for the dark theme context
+                notification.className = `p-4 rounded-xl shadow-xl text-primary-dark ${bgColorClass} transition-opacity duration-300 opacity-0 font-bold max-w-xs text-sm`;
+                notification.textContent = message;
+
+                notificationArea.appendChild(notification);
+                
+                // Fade in
+                setTimeout(() => notification.style.opacity = '1', 10);
+
+                // Fade out and remove
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    notification.addEventListener('transitionend', () => notification.remove());
+                }, 2000);
+            }
+
+            // --- 6. Clipboard Copy Function (using document.execCommand) ---
+            window.copyToClipboard = (event, text) => {
+                event.preventDefault(); // Stop navigation
+                
+                // Create a temporary textarea element to hold the text
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+
+                // Select the text and copy it
+                tempInput.select();
+                try {
+                    document.execCommand('copy');
+                    // Provide feedback
+                    showNotification('Copied to clipboard: ' + text, 'bg-accent-neon');
+                } catch (err) {
+                    // Fallback feedback
+                    showNotification('Copy failed.', 'bg-red-500');
+                }
+                document.body.removeChild(tempInput);
+            };
         });
     </script>
 
