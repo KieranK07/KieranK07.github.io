@@ -112,18 +112,69 @@
             }
         }
         /* --- END RIPPLE EFFECT CSS --- */
+
+        /* --- Physics Bubble Styling (Copy Effect) --- */
+        .bounce-bubble {
+            position: fixed; /* Fixed position relative to viewport for physics simulation */
+            z-index: 101;
+            white-space: nowrap;
+            padding: 8px 12px;
+            border-radius: 9999px; /* rounded-full equivalent */
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            pointer-events: none; /* Ignore clicks on the bubble */
+            transition: opacity 0.5s ease-out; /* Only smooth fade out, movement handled by JS */
+        }
+        
+        /* --- Code Rain Overlay Styling --- */
+        #code-rain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7); /* Slightly darken background */
+            z-index: 102; /* Above everything */
+            display: none; /* Hidden by default */
+            cursor: crosshair;
+        }
+        .code-block {
+            position: absolute;
+            font-family: 'SF Mono', 'Roboto Mono', monospace;
+            font-size: 14px;
+            color: #2dd4bf; /* accent-neon */
+            pointer-events: none;
+            transition: opacity 0.5s ease-out;
+            will-change: transform;
+            line-height: 1; /* Essential for accurate stacking */
+            width: 14px; /* Ensure collision check is accurate */
+            height: 14px; /* Ensure collision check is accurate */
+            text-align: center;
+            /* Blocks are placed using translate(x, y) coordinates from the top-left corner */
+        }
     </style>
 </head>
 <body class="font-sans">
 
     <!-- 0. Full-Screen Ripple Container (New Element) --><div id="ripple-container"></div>
     
-    <!-- The notification area and related code has been removed for simplification. -->
+    <!-- Fixed container for the bouncing "Copied!" text. Spans the viewport. --><div id="floating-notification-container" class="fixed top-0 left-0 w-full h-full pointer-events-none z-[100]">
+        <!-- Bounce bubbles will be injected here. -->
+    </div>
+
+    <!-- CODE RAIN OVERLAY (Hidden by default) -->
+    <div id="code-rain-overlay">
+        <div class="fixed top-4 left-4 text-accent-neon font-mono text-sm">
+            CODE RAIN ACTIVE | Type to drop blocks. Press ESC to stop.
+        </div>
+        <!-- Code blocks will be injected here -->
+    </div>
 
     <!-- Header Navigation Bar --><header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-xl shadow-lg">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <!-- Added id and class for ripple effect --><a href="#hero" id="header-logo" class="header-logo text-xl font-bold text-accent-neon neon-glow font-mono tracking-wider">K.K.</a>
-            <div class="space-x-4">
+            <div class="space-x-4 flex items-center">
+                
                 <a href="#education" class="text-gray-300 hover:text-accent-blue transition duration-300 hidden sm:inline">Education</a>
                 <a href="#skills" class="text-gray-300 hover:text-accent-blue transition duration-300">Skills</a>
                 <a href="#projects" class="text-gray-300 hover:text-accent-blue transition duration-300">Projects</a>
@@ -135,7 +186,9 @@
 
     <!-- 1. Hero Section --><section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         <!-- Background element for parallax --><div id="hero-background" class="opacity-10"></div>
-        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm"> <h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
+        <!-- Content wrapper is the target -->
+        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm"> 
+            <h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
                 Kieran Kelly
             </h1>
             <p class="text-2xl sm:text-4xl font-light text-accent-neon neon-glow scroll-reveal" style="transition-delay: 0.1s;">
@@ -164,7 +217,7 @@
     </section>
 
     <!-- 3. Skills Section --><section id="skills" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800">
-        <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal">Core <span class="text-accent-blue">Expertise</span></h2>
+        <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal"><span class="text-accent-blue">Expertise</span></h2>
         
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <!-- Skill Card 1: Python --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] scroll-reveal skill-card" data-percent="90" data-color="accent-neon" style="transition-delay: 0.1s;">
@@ -230,7 +283,7 @@
                 "If you want to make the world a better place, take a look at yourself and make a change."<br>-Hooo
             </p>
             <div class="mt-10 scroll-reveal" style="transition-delay: 0.3s;">
-                <!-- Reverted to standard mailto link --><a href="mailto:kieranjokelly@gmail.com" class="text-lg font-mono text-gray-400 hover:text-accent-neon transition duration-300">kieranjokelly@gmail.com</a>
+                <!-- Updated link to call the new physics function --><a href="#" id="about-email-link" onclick="copyAndBounce(event, 'kieranjokelly@gmail.com')" class="text-lg font-mono text-gray-400 hover:text-accent-neon transition duration-300">kieranjokelly@gmail.com</a>
             </div>
         </div>
     </section>
@@ -245,8 +298,8 @@
                     <p class="text-accent-neon font-mono mt-1 mb-6">Developer & Hacker</p>
                     
                     <div class="flex flex-col space-y-2 mt-4">
-                        <!-- Reverted to standard mailto link --><a href="mailto:kieranjokelly@gmail.com" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">kieranjokelly@gmail.com</a>
-                        <!-- Reverted to standard tel link --><a href="tel:+12402689430" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">+1 240 268 9430</a>
+                        <!-- Updated link to call the new physics function --><a href="#" id="contact-email-link" onclick="copyAndBounce(event, 'kieranjokelly@gmail.com')" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">kieranjokelly@gmail.com</a>
+                        <!-- Updated link to call the new physics function --><a href="#" onclick="copyAndBounce(event, '+1 240 268 9430')" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">+1 240 268 9430</a>
                     </div>
                 </div>
                  <!-- Visual representation of the business card PCB with Times New Roman 'K' logo --><div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-xl">
@@ -267,27 +320,325 @@
 
     <!-- The notification area container has been removed. -->
 
-    <!-- Footer --><footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800">
-        <p>&copy; 2025 Kieran Kelly.</p>
+    <!-- Footer -->
+    <footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800">
+        <p>&copy; 2025 Kieran Kelly. Built with Konami.</p>
     </footer>
 
     <!-- JavaScript for Scroll-Reveal Animation and Interactivity -->
     <script>
-        // Use the Intersection Observer API for efficient, modern scroll animations
+        // --- PHYSICS ENGINE START (for copied bubbles) ---
+        
+        const GRAVITY = 0.8; 
+        const DAMPING = 0.7; 
+        const MIN_VELOCITY = 2; 
+        const LIFETIME = 2000; 
+        const MAX_HORIZONTAL_LAUNCH = 5; 
+
+        let activeBubbles = [];
+        let animationFrameIdPhysics = null;
+
+        class PhysicsBubble {
+            constructor(element, initialTop, initialLeft) {
+                this.element = element;
+                this.y = initialTop;
+                this.x = initialLeft;
+                this.vy = 0; 
+                this.vx = (Math.random() * (MAX_HORIZONTAL_LAUNCH * 2)) - MAX_HORIZONTAL_LAUNCH; 
+                this.startTime = Date.now();
+                this.removed = false;
+                
+                this.element.style.left = `${this.x}px`;
+                this.element.style.top = `${this.y}px`;
+                this.element.style.transform = `translate(-50%, -50%)`; 
+                this.element.style.opacity = '1';
+            }
+
+            update() {
+                if (this.removed) return false;
+
+                const bubbleRect = this.element.getBoundingClientRect();
+                const bottomEdge = window.innerHeight;
+                const leftEdge = 0;
+                const rightEdge = window.innerWidth;
+                
+                this.vy += GRAVITY;
+                this.vx *= 0.99; 
+
+                this.y += this.vy;
+                this.x += this.vx;
+
+                const currentBottom = this.y + (bubbleRect.height / 2); 
+
+                if (currentBottom >= bottomEdge) {
+                    this.y = bottomEdge - (bubbleRect.height / 2); 
+
+                    if (Math.abs(this.vy) > MIN_VELOCITY) { 
+                        this.vy = -this.vy * DAMPING;
+                    } else {
+                        this.vy = 0; 
+                        this.vx = 0; 
+                    }
+                }
+                
+                const currentLeft = this.x - (bubbleRect.width / 2);
+                const currentRight = this.x + (bubbleRect.width / 2);
+
+                if (currentLeft <= leftEdge || currentRight >= rightEdge) {
+                    this.vx = -this.vx * DAMPING;
+                    if (currentLeft <= leftEdge) {
+                        this.x = leftEdge + (bubbleRect.width / 2);
+                    } else if (currentRight >= rightEdge) {
+                        this.x = rightEdge - (bubbleRect.width / 2);
+                    }
+                }
+
+                this.element.style.top = `${this.y}px`;
+                this.element.style.left = `${this.x}px`;
+
+
+                const elapsed = Date.now() - this.startTime;
+                if (elapsed > LIFETIME) {
+                    const fadeTime = 500;
+                    const fadeProgress = (elapsed - LIFETIME) / fadeTime;
+                    
+                    this.element.style.opacity = Math.max(0, 1 - fadeProgress).toString();
+                    
+                    if (fadeProgress > 1) {
+                        this.element.remove();
+                        this.removed = true;
+                        return false; 
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        function animatePhysics() {
+            activeBubbles = activeBubbles.filter(bubble => bubble.update());
+            animationFrameIdPhysics = requestAnimationFrame(animatePhysics);
+        }
+        
+        // --- CODE RAIN EASTER EGG START (with inter-block collision) ---
+        const CODE_GRAVITY = 0.5;
+        const CODE_DAMPING = 0.5; // Damping for horizontal and vertical bounce
+        const CODE_MIN_VELOCITY = 0.5; // Velocity threshold to stop bouncing/settle
+        const CODE_AIR_DRAG = 0.99; 
+        const CODE_BLOCK_SIZE = 14;
+        const CODE_HORIZONTAL_LAUNCH = 5; // Initial random horizontal speed range
+
+        let isCodeRainActive = false;
+        let codeBlocks = [];
+        let codeRainOverlay = null;
+        let animationFrameIdRain = null;
+        let lastDropTime = 0;
+        const DROP_INTERVAL = 50; 
+
+        class CodeBlock {
+            constructor(char, x) {
+                this.element = document.createElement('div');
+                this.element.textContent = char;
+                this.element.className = 'code-block';
+                
+                // x, y are top-left coordinates of the block
+                this.x = x; 
+                this.y = 0;
+                this.vy = 0; 
+                this.vx = (Math.random() * (CODE_HORIZONTAL_LAUNCH * 2)) - CODE_HORIZONTAL_LAUNCH;
+                this.hasSettled = false;
+
+                this.element.style.left = `${this.x}px`;
+                this.element.style.top = `${this.y}px`;
+
+                codeRainOverlay.appendChild(this.element);
+            }
+
+            update() {
+                if (this.hasSettled) return true;
+
+                // Apply gravity and drag
+                this.vy += CODE_GRAVITY;
+                this.vx *= CODE_AIR_DRAG;
+
+                // Update position
+                this.y += this.vy;
+                this.x += this.vx;
+
+                // 1. WALL COLLISION & BOUNCE
+                const wallX = window.innerWidth - CODE_BLOCK_SIZE;
+                if (this.x < 0) {
+                    this.x = 0;
+                    this.vx = -this.vx * CODE_DAMPING;
+                } else if (this.x > wallX) {
+                    this.x = wallX;
+                    this.vx = -this.vx * CODE_DAMPING;
+                }
+                
+                // 2. FIND HIGHEST LANDING SPOT (Stacking/Floor)
+                let settlementY = window.innerHeight; // Floor is the default landing spot
+                
+                // Check collision with other blocks
+                for (const otherBlock of codeBlocks) {
+                    if (otherBlock === this || !otherBlock.hasSettled) continue;
+                    
+                    // Horizontal overlap check
+                    const horizontallyOverlaps = (
+                        this.x < otherBlock.x + CODE_BLOCK_SIZE &&
+                        this.x + CODE_BLOCK_SIZE > otherBlock.x
+                    );
+                    
+                    if (horizontallyOverlaps) {
+                        const landingY = otherBlock.y; // The Y coordinate where the current block's top should land on the other block's top
+                        
+                        // Check if the landing spot is higher (closer to 0) than the current best settlement Y
+                        // AND if the block is currently falling into the collision zone (prevents blocks from jumping up to settle)
+                        if (landingY < settlementY && this.y + CODE_BLOCK_SIZE > otherBlock.y && this.vy > 0) {
+                             // Collision occurred. The highest available landing point is the top of the other block.
+                            settlementY = landingY;
+                        }
+                    }
+                }
+
+                // 3. APPLY VERTICAL COLLISION (Floor/Stack Bounce or Settlement)
+                const currentBottomY = this.y + CODE_BLOCK_SIZE;
+
+                if (currentBottomY >= settlementY) {
+                    this.y = settlementY - CODE_BLOCK_SIZE; // Adjust Y position
+                    
+                    if (Math.abs(this.vy) > CODE_MIN_VELOCITY) {
+                        this.vy = -this.vy * CODE_DAMPING; // Bounce
+                        // Also bounce horizontally slightly if vertical velocity was high
+                        this.vx *= 0.8; 
+                    } else {
+                        // Settle
+                        this.vy = 0;
+                        this.vx = 0;
+                        this.hasSettled = true;
+                    }
+                }
+                
+                // 4. Update element position
+                this.element.style.transform = `translate(${this.x}px, ${this.y}px)`;
+                return true;
+            }
+            
+            destroy() {
+                this.element.style.opacity = '0';
+                setTimeout(() => this.element.remove(), 500);
+            }
+        }
+        
+        function handleKeyDrop(e) {
+            if (!isCodeRainActive) return;
+            
+            const now = Date.now();
+            if (e.key === 'Escape') {
+                stopCodeRain();
+                return;
+            }
+            
+            if (now - lastDropTime < DROP_INTERVAL) return;
+
+            if (e.key.length !== 1 || e.key.match(/\s/)) return; 
+            
+            lastDropTime = now;
+            
+            const initialX = Math.random() * (window.innerWidth - CODE_BLOCK_SIZE); 
+            
+            const newBlock = new CodeBlock(e.key.toUpperCase(), initialX); // Uppercase looks more like code
+            codeBlocks.push(newBlock);
+        }
+
+        function codeRainLoop() {
+            if (!isCodeRainActive) return;
+
+            codeBlocks = codeBlocks.filter(block => block.update());
+            animationFrameIdRain = requestAnimationFrame(codeRainLoop);
+        }
+
+        function startCodeRain(e) {
+            // e is passed from the Konami listener, which will prevent default behavior on Enter
+            if (e && e.preventDefault) e.preventDefault();
+            if (isCodeRainActive) return;
+
+            isCodeRainActive = true;
+            codeRainOverlay = document.getElementById('code-rain-overlay');
+            codeRainOverlay.style.display = 'block';
+            
+            document.addEventListener('keydown', handleKeyDrop);
+            
+            // Start rain loop
+            animationFrameIdRain = requestAnimationFrame(codeRainLoop);
+        }
+        
+        function stopCodeRain() {
+            isCodeRainActive = false;
+            document.removeEventListener('keydown', handleKeyDrop);
+
+            if (animationFrameIdRain) {
+                cancelAnimationFrame(animationFrameIdRain);
+            }
+            
+            codeBlocks.forEach(block => block.destroy());
+            codeBlocks = [];
+            
+            setTimeout(() => {
+                codeRainOverlay.style.display = 'none';
+            }, 500);
+        }
+        
+        // --- KONAMI CODE DETECTION ---
+        const KONAMI_CODE = [
+            'ArrowUp', 'ArrowUp', 
+            'ArrowDown', 'ArrowDown', 
+            'ArrowLeft', 'ArrowRight', 
+            'ArrowLeft', 'ArrowRight', 
+            'KeyB', 'KeyA', 'Enter'
+        ];
+        let konamiIndex = 0;
+
+        function handleKonamiCode(e) {
+            // Check if the current key matches the next key in the sequence
+            if (e.code === KONAMI_CODE[konamiIndex]) {
+                konamiIndex++;
+                
+                // Prevent scrolling/default actions for arrow keys and Enter during sequence entry
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.code)) {
+                    e.preventDefault();
+                }
+                
+                // If the entire sequence is matched
+                if (konamiIndex === KONAMI_CODE.length) {
+                    konamiIndex = 0; 
+                    if (!isCodeRainActive) {
+                        startCodeRain(e);
+                    }
+                }
+            } else {
+                // Reset the sequence if an incorrect key is pressed
+                konamiIndex = 0;
+            }
+        }
+        
+        // --- CORE APPLICATION LOGIC (DOMContentLoaded) ---
         document.addEventListener('DOMContentLoaded', () => {
             
+            // Add the Konami listener globally and permanently
+            document.addEventListener('keydown', handleKonamiCode);
+            
+            // --- Physics engine initiation ---
+            if (!animationFrameIdPhysics) {
+                animatePhysics();
+            }
+
             // --- 0. Initialize Lucide Icons ---
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
 
-            // --- 1. Scroll Reveal (Fade In/Slide Up) ---
-            const scrollRevealOptions = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.2 // Trigger when 20% of the element is visible
-            };
-
+            // --- 1. Scroll Reveal (Standard setup) ---
+            const scrollRevealOptions = { root: null, rootMargin: '0px', threshold: 0.2 };
             const scrollRevealObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -296,90 +647,94 @@
                     }
                 });
             }, scrollRevealOptions);
+            document.querySelectorAll('.scroll-reveal').forEach(el => { scrollRevealObserver.observe(el); });
 
-            document.querySelectorAll('.scroll-reveal').forEach(el => {
-                scrollRevealObserver.observe(el);
-            });
-
-
-            // --- 2. Interactive Skill Bars (Fill Animation) ---
-            const skillBarOptions = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.5 // Trigger when 50% of the element is visible
-            };
-            
+            // --- 2. Interactive Skill Bars (Standard setup) ---
+            const skillBarOptions = { root: null, rootMargin: '0px', threshold: 0.5 };
             const skillBarObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting && entry.target.classList.contains('skill-card')) {
                         const percent = entry.target.getAttribute('data-percent');
                         const fillBar = entry.target.querySelector('.skill-bar-fill');
-                        
-                        // Set the width to the specified percentage, triggering the CSS transition
-                        if (fillBar) {
-                            fillBar.style.width = `${percent}%`;
-                        }
-
-                        // Stop observing after animation
+                        if (fillBar) { fillBar.style.width = `${percent}%`; }
                         observer.unobserve(entry.target);
                     }
                 });
             }, skillBarOptions);
+            document.querySelectorAll('.skill-card').forEach(card => { skillBarObserver.observe(card); });
 
-            // Select all skill cards to observe
-            document.querySelectorAll('.skill-card').forEach(card => {
-                skillBarObserver.observe(card);
-            });
-
-
-            // --- 3. Parallax Effect on Hero Background (Enhanced for Apple feel) ---
+            // --- 3. Parallax Effect on Hero Background (Standard setup) ---
             const heroBackground = document.getElementById('hero-background');
             if (heroBackground) {
                 window.addEventListener('scroll', () => {
                     const scrollY = window.scrollY;
-                    // Increased the multiplier from 0.05 to 0.2 for a more noticeable parallax depth effect
                     heroBackground.style.transform = `translateY(${scrollY * 0.2}px)`;
                 });
             }
 
-            // --- 4. Header Logo Ripple Effect ---
+            // --- 4. Header Logo Ripple Effect (Standard setup) ---
             const headerLogo = document.getElementById('header-logo');
             const rippleContainer = document.getElementById('ripple-container');
-
             if (headerLogo && rippleContainer) {
                 headerLogo.addEventListener('click', (e) => {
-                    // Check if scroll is at the very top (or very close)
                     if (window.scrollY < 10) {
                         e.preventDefault(); 
-
-                        // Get logo position relative to the viewport
                         const rect = headerLogo.getBoundingClientRect();
-                        
-                        // Calculate center of the logo element
                         const x = rect.left + rect.width / 2;
                         const y = rect.top + rect.height / 2;
-
-                        // Create ripple element
                         const ripple = document.createElement('div');
                         ripple.classList.add('ripple');
-                        
-                        // Position the ripple relative to the viewport center where the logo is
                         ripple.style.left = `${x}px`;
                         ripple.style.top = `${y}px`;
-
                         rippleContainer.appendChild(ripple);
-
-                        // Clean up the ripple element after the animation finishes
                         ripple.addEventListener('animationend', () => {
                             ripple.remove();
                         });
                     }
-                    // If not at the top, the default anchor action (scrolling to #hero) will proceed
                 });
             }
-            
-            // NOTE: All notification-related JavaScript functions have been removed.
         });
+        
+        // --- CORE CLIPBOARD & BOUNCE FUNCTION (Existing) ---
+        function copyToClipboardCore(text) {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy'); 
+                document.body.removeChild(tempInput);
+                return true;
+            } catch (err) {
+                document.body.removeChild(tempInput);
+                console.error('Copy failed:', err);
+                return false;
+            }
+        }
+
+        window.copyAndBounce = (event, text) => {
+            event.preventDefault(); 
+            
+            if (copyToClipboardCore(text)) {
+                const clickedElement = event.currentTarget;
+                const container = document.getElementById('floating-notification-container');
+                if (!container) return;
+                
+                const rect = clickedElement.getBoundingClientRect();
+                
+                const bubble = document.createElement('div');
+                bubble.textContent = "Copied!";
+                bubble.className = "bounce-bubble bg-accent-neon text-primary-dark";
+                
+                const initialTop = rect.top + rect.height / 2;
+                const initialLeft = rect.left + rect.width / 2;
+
+                container.appendChild(bubble);
+
+                const newBubble = new PhysicsBubble(bubble, initialTop, initialLeft);
+                activeBubbles.push(newBubble);
+            }
+        };
     </script>
 
 </body>
