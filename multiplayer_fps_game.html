@@ -197,18 +197,8 @@
         const HALF_ARENA = ARENA_SIZE / 2;
 
         const PLATFORMS_DATA = [
-            // 0. The Main Floor/Grid (Top surface at Y=0)
+            // 0. The Main Floor/Grid (Top surface at Y=0) - The only object now
             { pos: new THREE.Vector3(0, -2.5, 0), size: new THREE.Vector3(ARENA_SIZE, 5, ARENA_SIZE), color: 0x101a2c, opacity: 1 },
-            
-            // Invisible Walls (Used for collision detection)
-            // Wall 1: North (Z=-200)
-            { pos: new THREE.Vector3(0, WALL_HEIGHT / 2, -HALF_ARENA), size: new THREE.Vector3(ARENA_SIZE, WALL_HEIGHT, 5), color: 0x0f172a, opacity: 0.1, transparent: true },
-            // Wall 2: South (Z=200)
-            { pos: new THREE.Vector3(0, WALL_HEIGHT / 2, HALF_ARENA), size: new THREE.Vector3(ARENA_SIZE, WALL_HEIGHT, 5), color: 0x0f172a, opacity: 0.1, transparent: true },
-            // Wall 3: East (X=200)
-            { pos: new THREE.Vector3(HALF_ARENA, WALL_HEIGHT / 2, 0), size: new THREE.Vector3(5, WALL_HEIGHT, ARENA_SIZE), color: 0x0f172a, opacity: 0.1, transparent: true },
-            // Wall 4: West (X=-200)
-            { pos: new THREE.Vector3(-HALF_ARENA, WALL_HEIGHT / 2, 0), size: new THREE.Vector3(5, WALL_HEIGHT, ARENA_SIZE), color: 0x0f172a, opacity: 0.1, transparent: true }
         ];
 
         // --- NEW PLAYER OBJECT CONTAINER ---
@@ -590,7 +580,7 @@
 
             // --- HORIZONTAL WALL CLAMPING (Guarantees no clipping in the box arena) ---
             const playerHalfSizeHorizontal = 2.5;
-            const wallBoundary = HALF_ARENA - playerHalfSizeHorizontal - 0.5; // 200 - 2.5 - 0.5 = 197
+            const wallBoundary = HALF_ARENA - playerHalfSizeHorizontal - 0.5; 
             
             // Clamp X
             playerObject.position.x = Math.max(-wallBoundary, Math.min(wallBoundary, playerObject.position.x));
@@ -674,18 +664,34 @@
             renderer.render(scene, camera);
         }
 
-        // --- ENTRY POINT ---
+        // --- ENTRY POINT (Fixed for Module Loading Delay) ---
         window.onload = function () {
-             // Handle start button click to proceed with auth/game initialization
-            startButton.addEventListener('click', () => {
-                document.getElementById('status-message').textContent = 'Authenticating...';
+            // Initial State: Show loading message
+            startButton.disabled = true;
+            statusMessage.textContent = 'Awaiting module initialization...';
+            
+            // Function to handle the starting sequence when the module is ready
+            const handleStartButtonClick = () => {
+                statusMessage.textContent = 'Authenticating...';
                 startButton.disabled = true;
+                window.setupAuthAndStartGame();
+            };
+
+            // Poll until the module script has defined the necessary function
+            const checkModuleReady = () => {
                 if (window.setupAuthAndStartGame) {
-                    window.setupAuthAndStartGame();
+                    // Module is ready, enable button and attach handler
+                    startButton.disabled = false;
+                    statusMessage.textContent = 'Ready to enter the grid.';
+                    startButton.addEventListener('click', handleStartButtonClick);
                 } else {
-                    document.getElementById('status-message').textContent = 'Firebase modules loading... please wait.';
+                    // Retry check after a short delay (100ms)
+                    setTimeout(checkModuleReady, 100);
                 }
-            });
+            };
+
+            // Start the check
+            checkModuleReady();
         };
     </script>
 </body>
