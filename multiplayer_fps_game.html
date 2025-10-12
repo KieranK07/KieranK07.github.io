@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer FPS Demo | Three.js & Firestore</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, increment, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase and expose utilities globally
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.db = getFirestore(window.firebaseApp);
+        window.auth = getAuth(window.firebaseApp);
+        setLogLevel('Debug'); // Enable debug logging for Firestore
+
+        // Authentication function
+        window.setupAuthAndStartGame = async () => {
+            let userId = null;
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(window.auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(window.auth);
+                }
+                userId = window.auth.currentUser?.uid || crypto.randomUUID();
+                document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                window.PLAYER_ID = userId;
+                window.startGameLoop();
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+                document.getElementById('status-message').textContent = 'Error during authentication.';
+            }
+        };
+
+        // Expose Firestore logic globally
+        window.getGameCollectionRef = () => {
+            const userId = window.PLAYER_ID;
+            const userRef = doc(window.db, 'artifacts', appId, 'public', 'data', 'fps_players', userId);
+            const collectionRef = collection(window.db, 'artifacts', appId, 'public', 'data', 'fps_players');
+            return { userRef, collectionRef };
+        };
+    </script>
+    
+    <style>
+        /* Custom styles for the FPS aesthetic */
+        body, html {
+            margin: 0;
+            overflow: hidden;
+            height: 100%;
+            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+        }
+        canvas { display: block; }
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border-radius: 50%;
+            border: 2px solid #2dd4bf; /* Accent Neon */
+            box-shadow: 0 0 5px #2dd4bf;
+            pointer-events: none;
+        }
+        #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.9); /* primary-dark */
+            border: 2px solid #38bdf8; /* accent-blue */
+            padding: 2rem;
+            text-align: center;
+            border-radius: 1rem;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+            pointer-events: all; /* Allow clicking the button */
+        }
+    </style>
+</head>
+<body class="font-mono">
+    <div id="game-container"></div>
+
+    <!-- UI Overlay for HUD and Instructions -->
+    <div id="ui-overlay">
+        <!-- Crosshair -->
+        <div id="crosshair"></div>
+
+        <!-- FPS / Status Display -->
+        <div class="fixed top-4 left-4 p-2 bg-primary-dark/70 rounded-lg text-accent-neon text-xs">
+            <p id="fps-display">FPS: 0</p>
+            <p id="player-count-display">Players: 1</p>
+            <p id="user-id-display" class="break-words max-w-[200px]">User ID: Connecting...</p>
+            <p id="status-message" class="text-red-400 mt-1"></p>
+        </div>
+
+        <!-- Instructions Panel -->
+        <div id="instructions">
+            <h1 class="text-3xl font-bold text-accent-neon mb-4">Multiplayer Arena (Alpha)</h1>
+            <p class="text-gray-300 mb-6">Built with Three.js & Firestore for real-time sync.</p>
+            <div class="text-left text-sm mx-auto w-fit space-y-2 mb-6">
+                <p><strong>Controls:</strong></p>
+                <ul class="list-disc list-inside">
+                    <li>Mouse: Look around (Requires click)</li>
+                    <li>W, A, S, D: Move</li>
+                    <li>Space: Jump (No gravity, just a boost)</li>
+                    <li>Click the arena to lock pointer!</li>
+                </ul>
+            </div>
+            <button id="start-button" class="px-6 py-2 bg-accent-blue text-primary-dark font-bold rounded-lg hover:bg-sky-300 transition duration-300 pointer-events-auto">
+                Enter the Grid
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Game Variables ---
+        let scene, camera, renderer;
+        let controls; // PointerLockControls will be used
+        let clock;
+        
+        let PLAYER_ID = null; // Set after Firebase auth completes
+        const PLAYER_HEIGHT = 10;
+        const MOVE_SPEED = 200;
+        const PLAYER_SYNC_RATE = 100; // ms (10 FPS update rate)
+        let lastSyncTime = 0;
+        
+        // Multiplayer Data
+        const otherPlayers = {}; // {userId: {mesh: THREE.Mesh, data: {...}}}
+        
+        // Movement State
+        const keyState = { w: false, a: false, s: false, d: false, space: false };
+        const velocity = new THREE.Vector3();
+
+        // DOM Elements
+        const instructionsPanel = document.getElementById('instructions');
+        const gameContainer = document.getElementById('game-container');
+        const fpsDisplay = document.getElementById('fps-display');
+        const playerCountDisplay = document.getElementById('player-count-display');
+        const startButton = document.getElementById('start-button');
+
+
+        // --- FIREBASE/FIRESTORE INTERACTION ---
+
+        /**
+         * Pushes the current local player state to Firestore.
+         */
+        async function syncLocalPlayerState() {
+            if (!PLAYER_ID || !camera || !window.getGameCollectionRef) return;
+            
+            const now = Date.now();
+            if (now - lastSyncTime < PLAYER_SYNC_RATE) return;
+            lastSyncTime = now;
+
+            const { userRef } = window.getGameCollectionRef();
+            
+            const playerState = {
+                id: PLAYER_ID,
+                position: {
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z,
+                },
+                rotation: {
+                    x: camera.rotation.x,
+                    y: camera.rotation.y,
+                    z: camera.rotation.z,
+                },
+                timestamp: now,
+                // Add a health/score field for the demo
+                score: Math.floor(Math.random() * 100), // Mock score
+            };
+
+            try {
+                await setDoc(userRef, playerState, { merge: true });
+            } catch (error) {
+                console.error("Error writing player data to Firestore:", error);
+                document.getElementById('status-message').textContent = 'Sync Error. Check console.';
+            }
+        }
+        
+        /**
+         * Sets up the real-time listener for all players in the arena.
+         */
+        function setupMultiplayerListener() {
+            if (!window.getGameCollectionRef) return;
+
+            const { collectionRef } = window.getGameCollectionRef();
+            
+            onSnapshot(collectionRef, (snapshot) => {
+                let activePlayers = 0;
+                snapshot.docChanges().forEach((change) => {
+                    const data = change.doc.data();
+                    const id = data.id;
+
+                    if (id === PLAYER_ID) return; // Skip local player
+
+                    if (change.type === "added" || change.type === "modified") {
+                        updateOtherPlayer(id, data);
+                    } else if (change.type === "removed") {
+                        removeOtherPlayer(id);
+                    }
+                });
+
+                // Count active players (including self, represented by camera)
+                activePlayers = Object.keys(otherPlayers).length + 1;
+                playerCountDisplay.textContent = `Players: ${activePlayers}`;
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+                document.getElementById('status-message').textContent = 'Live Data Error. Check console.';
+            });
+        }
+
+        /**
+         * Adds or updates another player's mesh in the scene.
+         */
+        function updateOtherPlayer(id, data) {
+            let playerMesh = otherPlayers[id]?.mesh;
+
+            if (!playerMesh) {
+                // New player: create a cube mesh
+                const color = Math.random() * 0xffffff;
+                const geometry = new THREE.BoxGeometry(5, PLAYER_HEIGHT, 5);
+                const material = new THREE.MeshBasicMaterial({ color: color, wireframe: false, transparent: true, opacity: 0.8 });
+                playerMesh = new THREE.Mesh(geometry, material);
+                
+                // Add player's ID tag
+                const spriteMap = new THREE.TextureLoader().load(
+                    'https://placehold.co/128x32/1e293b/2dd4bf?text=' + id.substring(0, 6)
+                );
+                const spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(10, 2.5, 1);
+                sprite.position.set(0, PLAYER_HEIGHT / 2 + 1, 0); // Position above the cube
+                playerMesh.add(sprite);
+
+                scene.add(playerMesh);
+                otherPlayers[id] = { mesh: playerMesh, data: data };
+                console.log(`Player joined: ${id}`);
+            }
+
+            // Update position and rotation
+            playerMesh.position.set(data.position.x, data.position.y - PLAYER_HEIGHT / 2, data.position.z);
+            // Simple rotation sync (yaw only for cube representation)
+            playerMesh.rotation.y = data.rotation.y; 
+            
+            otherPlayers[id].data = data;
+        }
+
+        /**
+         * Removes a disconnected player's mesh from the scene.
+         */
+        function removeOtherPlayer(id) {
+            if (otherPlayers[id]) {
+                scene.remove(otherPlayers[id].mesh);
+                delete otherPlayers[id];
+                console.log(`Player left: ${id}`);
+            }
+        }
+
+
+        // --- THREE.JS INITIALIZATION & GAME SETUP ---
+
+        /**
+         * Initializes the Three.js scene, camera, and world elements.
+         */
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a); // primary-dark
+            scene.fog = new THREE.Fog(0x0f172a, 0, 500);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(0, PLAYER_HEIGHT, 0); // Start player at origin above ground
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            gameContainer.appendChild(renderer.domElement);
+
+            // Lighting (Ambient for basic visibility, directional for shadows)
+            const ambientLight = new THREE.AmbientLight(0x404040, 5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+            directionalLight.position.set(50, 50, 50);
+            scene.add(directionalLight);
+
+            // World Geometry (A simple floor and walls)
+            const floorGeometry = new THREE.PlaneGeometry(500, 500);
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x1e293b }); // slate-800
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            scene.add(floor);
+
+            // Simple boundary walls (wireframe effect)
+            const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.2 });
+            
+            const wallSize = 500;
+            const wallHeight = 100;
+            
+            // Back Wall
+            const wall1 = new THREE.Mesh(new THREE.PlaneGeometry(wallSize, wallHeight), wallMaterial);
+            wall1.position.set(0, wallHeight / 2, -wallSize / 2);
+            scene.add(wall1);
+
+            // Front Wall
+            const wall2 = new THREE.Mesh(new THREE.PlaneGeometry(wallSize, wallHeight), wallMaterial);
+            wall2.position.set(0, wallHeight / 2, wallSize / 2);
+            wall2.rotation.y = Math.PI;
+            scene.add(wall2);
+            
+            // Resize handler
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        /**
+         * Responds to window resizing to keep the camera and renderer in sync.
+         */
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // --- POINTER LOCK AND CONTROL IMPLEMENTATION ---
+
+        // Custom Pointer Lock implementation for simple FPS controls
+        let isLocked = false;
+        
+        function setupControls() {
+            // Use the Pointer Lock API
+            document.addEventListener('pointerlockchange', lockChangeAlert, false);
+            document.addEventListener('mozpointerlockchange', lockChangeAlert, false); // For Firefox
+
+            gameContainer.addEventListener('click', () => {
+                gameContainer.requestPointerLock();
+            });
+
+            function lockChangeAlert() {
+                if (document.pointerLockElement === gameContainer ||
+                    document.mozPointerLockElement === gameContainer) {
+                    isLocked = true;
+                    instructionsPanel.style.display = 'none';
+                    // Attach mouse move listener only when locked
+                    document.addEventListener('mousemove', onMouseMove, false);
+                } else {
+                    isLocked = false;
+                    instructionsPanel.style.display = 'block';
+                    document.removeEventListener('mousemove', onMouseMove, false);
+                }
+            }
+
+            // Mouse Look Sensitivity
+            const sensitivity = 0.002;
+
+            function onMouseMove(event) {
+                if (!isLocked) return;
+                
+                const movementX = event.movementX || event.mozMovementX || 0;
+                const movementY = event.movementY || event.mozMovementY || 0;
+
+                // Adjust camera yaw (rotation around Y axis)
+                camera.rotation.y -= movementX * sensitivity;
+
+                // Adjust camera pitch (rotation around X axis) - clamp it to avoid flipping
+                let newPitch = camera.rotation.x - movementY * sensitivity;
+                newPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, newPitch));
+                camera.rotation.x = newPitch;
+            }
+
+            // Keyboard Movement Listeners
+            document.addEventListener('keydown', (event) => {
+                if (!isLocked) return;
+                switch (event.code) {
+                    case 'KeyW': keyState.w = true; break;
+                    case 'KeyA': keyState.a = true; break;
+                    case 'KeyS': keyState.s = true; break;
+                    case 'KeyD': keyState.d = true; break;
+                    case 'Space': 
+                        if (camera.position.y <= PLAYER_HEIGHT) { // Simple "jump" check
+                            velocity.y = 50; // Immediate vertical boost
+                        }
+                        break;
+                }
+            });
+
+            document.addEventListener('keyup', (event) => {
+                if (!isLocked) return;
+                switch (event.code) {
+                    case 'KeyW': keyState.w = false; break;
+                    case 'KeyA': keyState.a = false; break;
+                    case 'KeyS': keyState.s = false; break;
+                    case 'KeyD': keyState.d = false; break;
+                }
+            });
+        }
+        
+        /**
+         * Updates player position based on keyboard input and frame time.
+         */
+        function updateMovement(delta) {
+            // Apply gravity (simple non-collision version)
+            velocity.y -= 9.8 * 10 * delta; // 9.8 m/s^2 * scale factor
+
+            // Stop movement if not pressing keys
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+
+            // Apply friction/drag to Y velocity near the ground
+            if (camera.position.y <= PLAYER_HEIGHT) {
+                 velocity.y = Math.max(0, velocity.y); // Stop falling
+                 camera.position.y = PLAYER_HEIGHT; // Clamp to ground
+            }
+
+            // Calculate directional vectors based on camera rotation
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            
+            // Calculate movement vectors
+            if (keyState.w) velocity.add(forward.multiplyScalar(MOVE_SPEED * delta));
+            if (keyState.s) velocity.add(forward.multiplyScalar(-MOVE_SPEED * delta));
+            if (keyState.a) velocity.add(right.multiplyScalar(-MOVE_SPEED * delta));
+            if (keyState.d) velocity.add(right.multiplyScalar(MOVE_SPEED * delta));
+            
+            // Apply velocity to position
+            camera.position.x += velocity.x * delta;
+            camera.position.y += velocity.y * delta;
+            camera.position.z += velocity.z * delta;
+
+            // Simple arena bounds check (500x500 floor)
+            const bound = 240;
+            camera.position.x = Math.max(-bound, Math.min(bound, camera.position.x));
+            camera.position.z = Math.max(-bound, Math.min(bound, camera.position.z));
+        }
+
+        // --- MAIN ANIMATION LOOP ---
+
+        window.startGameLoop = () => {
+            init(); // Setup Three.js scene
+            setupControls(); // Setup mouse/keyboard listeners
+            setupMultiplayerListener(); // Start listening for other players
+            clock = new THREE.Clock();
+            animate();
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+
+            // 1. Update FPS Display
+            const fps = 1 / delta;
+            fpsDisplay.textContent = `FPS: ${Math.round(fps)}`;
+            
+            // 2. Handle Movement
+            if (isLocked) {
+                updateMovement(delta);
+            }
+
+            // 3. Sync Player State to Firestore
+            syncLocalPlayerState();
+
+            // 4. Render Scene
+            renderer.render(scene, camera);
+        }
+
+        // --- ENTRY POINT ---
+        window.onload = function () {
+             // Handle start button click to proceed with auth/game initialization
+            startButton.addEventListener('click', () => {
+                document.getElementById('status-message').textContent = 'Authenticating...';
+                startButton.disabled = true;
+                if (window.setupAuthAndStartGame) {
+                    window.setupAuthAndStartGame();
+                } else {
+                    document.getElementById('status-message').textContent = 'Firebase modules loading... please wait.';
+                }
+            });
+        };
+    </script>
+</body>
+</html>
