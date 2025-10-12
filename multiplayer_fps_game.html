@@ -11,7 +11,9 @@
     <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Removed unnecessary imports from auth
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Ensure all needed functions are imported
         import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, increment, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables provided by the environment
@@ -24,6 +26,15 @@
         window.db = getFirestore(window.firebaseApp);
         window.auth = getAuth(window.firebaseApp);
         setLogLevel('Debug'); // Enable debug logging for Firestore
+
+        // --- EXPOSE FIRESTORE FUNCTIONS GLOBALLY ---
+        // These are required because the main game script block is not a module
+        window.onSnapshot = onSnapshot;
+        window.doc = doc;
+        window.collection = collection;
+        window.setDoc = setDoc; 
+        // -------------------------------------------
+
 
         // Authentication function
         window.setupAuthAndStartGame = async () => {
@@ -47,6 +58,7 @@
         // Expose Firestore logic globally
         window.getGameCollectionRef = () => {
             const userId = window.PLAYER_ID;
+            // Since doc and collection are now globally exposed, they can be used via window or implicitly
             const userRef = doc(window.db, 'artifacts', appId, 'public', 'data', 'fps_players', userId);
             const collectionRef = collection(window.db, 'artifacts', appId, 'public', 'data', 'fps_players');
             return { userRef, collectionRef };
@@ -93,18 +105,33 @@
             box-shadow: 0 0 5px #2dd4bf;
             pointer-events: none;
         }
+        
+        /* LOGIN SCREEN STYLING */
         #instructions {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.9); /* primary-dark */
-            border: 2px solid #38bdf8; /* accent-blue */
-            padding: 2rem;
+            background: rgba(15, 23, 42, 0.95); /* Deeper dark background */
+            border: 2px solid #2dd4bf; /* Neon border */
+            padding: 3rem 4rem;
             text-align: center;
             border-radius: 1rem;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
-            pointer-events: all; /* Allow clicking the button */
+            box-shadow: 0 0 40px rgba(45, 212, 191, 0.4); /* Stronger neon glow */
+            pointer-events: all; 
+            min-width: 350px;
+        }
+        #instructions h1 {
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 10px rgba(45, 212, 191, 0.8);
+        }
+        #instructions button {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+        #instructions button:hover {
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.8), 0 0 5px rgba(56, 189, 248, 1);
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -124,21 +151,15 @@
             <p id="status-message" class="text-red-400 mt-1"></p>
         </div>
 
-        <!-- Instructions Panel -->
+        <!-- Instructions Panel (Redesigned Login Screen) -->
         <div id="instructions">
-            <h1 class="text-3xl font-bold text-accent-neon mb-4">Multiplayer Arena (Alpha)</h1>
-            <p class="text-gray-300 mb-6">Built with Three.js & Firestore for real-time sync.</p>
-            <div class="text-left text-sm mx-auto w-fit space-y-2 mb-6">
-                <p><strong>Controls:</strong></p>
-                <ul class="list-disc list-inside">
-                    <li>Mouse: Look around (Requires click)</li>
-                    <li>W, A, S, D: Move</li>
-                    <li>Space: Jump (No gravity, just a boost)</li>
-                    <li>Click the arena to lock pointer!</li>
-                </ul>
-            </div>
-            <button id="start-button" class="px-6 py-2 bg-accent-blue text-primary-dark font-bold rounded-lg hover:bg-sky-300 transition duration-300 pointer-events-auto">
-                Enter the Grid
+            <h1 class="text-4xl font-bold text-accent-neon mb-6">SYSTEM BOOT SEQUENCE</h1>
+            <p class="text-gray-400 mb-8 font-light">
+                Secure connection established. Initiating multi-user protocol...
+            </p>
+            <!-- Removed Control Log as requested -->
+            <button id="start-button" class="px-10 py-4 bg-accent-blue text-primary-dark text-lg font-extrabold rounded-full hover:bg-sky-300 transition duration-300 pointer-events-auto">
+                ENTER THE GRID
             </button>
         </div>
     </div>
@@ -146,21 +167,60 @@
     <script>
         // --- Global Game Variables ---
         let scene, camera, renderer;
-        let controls; // PointerLockControls will be used
         let clock;
         
-        let PLAYER_ID = null; // Set after Firebase auth completes
-        const PLAYER_HEIGHT = 10;
-        const MOVE_SPEED = 200;
-        const PLAYER_SYNC_RATE = 100; // ms (10 FPS update rate)
+        let PLAYER_ID = null; 
+        const PLAYER_HEIGHT = 12; // Increased player size
+        const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
+        const MOVE_SPEED = 120; 
+        const JUMP_SPEED = 150; 
+        const GRAVITY = 9.8 * 30; 
+        const PLAYER_SYNC_RATE = 100; 
         let lastSyncTime = 0;
+        let canJump = false; 
         
+        // --- PHYSICS GLOBALS ---
+        let raycaster;
+        let collidableObjects = []; // Array of meshes to check collisions against
+
+        // --- GAMEPLAY MECHANIC VARIABLES ---
+        const DEATH_Y_LEVEL = -50; // Failsafe death below the floor
+        const RESPAWN_TIME_MS = 5000; 
+        let isDead = false;
+        let respawnTimer = 0;
+        // Player eyes are at Y=6 (center Y=6, eyes at center + 6)
+        const RESPAWN_POSITION = new THREE.Vector3(0, PLAYER_HALF_HEIGHT + 0.1, 0); 
+        
+        // Platform data (New Arena Design: Flat Floor with Invisible Walls)
+        const ARENA_SIZE = 400; // Reduced arena size
+        const WALL_HEIGHT = 100;
+        const HALF_ARENA = ARENA_SIZE / 2;
+
+        const PLATFORMS_DATA = [
+            // 0. The Main Floor/Grid (Top surface at Y=0)
+            { pos: new THREE.Vector3(0, -2.5, 0), size: new THREE.Vector3(ARENA_SIZE, 5, ARENA_SIZE), color: 0x101a2c, opacity: 1 },
+            
+            // Invisible Walls (Used for collision detection)
+            // Wall 1: North (Z=-200)
+            { pos: new THREE.Vector3(0, WALL_HEIGHT / 2, -HALF_ARENA), size: new THREE.Vector3(ARENA_SIZE, WALL_HEIGHT, 5), color: 0x0f172a, opacity: 0.1, transparent: true },
+            // Wall 2: South (Z=200)
+            { pos: new THREE.Vector3(0, WALL_HEIGHT / 2, HALF_ARENA), size: new THREE.Vector3(ARENA_SIZE, WALL_HEIGHT, 5), color: 0x0f172a, opacity: 0.1, transparent: true },
+            // Wall 3: East (X=200)
+            { pos: new THREE.Vector3(HALF_ARENA, WALL_HEIGHT / 2, 0), size: new THREE.Vector3(5, WALL_HEIGHT, ARENA_SIZE), color: 0x0f172a, opacity: 0.1, transparent: true },
+            // Wall 4: West (X=-200)
+            { pos: new THREE.Vector3(-HALF_ARENA, WALL_HEIGHT / 2, 0), size: new THREE.Vector3(5, WALL_HEIGHT, ARENA_SIZE), color: 0x0f172a, opacity: 0.1, transparent: true }
+        ];
+
+        // --- NEW PLAYER OBJECT CONTAINER ---
+        let playerObject; 
+
         // Multiplayer Data
-        const otherPlayers = {}; // {userId: {mesh: THREE.Mesh, data: {...}}}
+        const otherPlayers = {}; 
         
         // Movement State
         const keyState = { w: false, a: false, s: false, d: false, space: false };
-        const velocity = new THREE.Vector3();
+        const velocity = new THREE.Vector3(); 
+        const direction = new THREE.Vector3(); 
 
         // DOM Elements
         const instructionsPanel = document.getElementById('instructions');
@@ -168,15 +228,16 @@
         const fpsDisplay = document.getElementById('fps-display');
         const playerCountDisplay = document.getElementById('player-count-display');
         const startButton = document.getElementById('start-button');
+        const statusMessage = document.getElementById('status-message');
 
 
-        // --- FIREBASE/FIRESTORE INTERACTION ---
+        // --- FIREBASE/FIRESTORE INTERACTION (Unchanged) ---
 
         /**
          * Pushes the current local player state to Firestore.
          */
         async function syncLocalPlayerState() {
-            if (!PLAYER_ID || !camera || !window.getGameCollectionRef) return;
+            if (!PLAYER_ID || !playerObject || !camera || !window.getGameCollectionRef || isDead) return; 
             
             const now = Date.now();
             if (now - lastSyncTime < PLAYER_SYNC_RATE) return;
@@ -187,25 +248,25 @@
             const playerState = {
                 id: PLAYER_ID,
                 position: {
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z,
+                    x: playerObject.position.x,
+                    y: playerObject.position.y,
+                    z: playerObject.position.z,
                 },
                 rotation: {
-                    x: camera.rotation.x,
-                    y: camera.rotation.y,
-                    z: camera.rotation.z,
+                    x: camera.rotation.x, 
+                    y: playerObject.rotation.y, 
+                    z: 0,
                 },
                 timestamp: now,
-                // Add a health/score field for the demo
-                score: Math.floor(Math.random() * 100), // Mock score
+                score: Math.floor(Math.random() * 100), 
+                isDead: isDead 
             };
 
             try {
-                await setDoc(userRef, playerState, { merge: true });
+                await retryOperation(() => setDoc(userRef, playerState, { merge: true }));
             } catch (error) {
                 console.error("Error writing player data to Firestore:", error);
-                document.getElementById('status-message').textContent = 'Sync Error. Check console.';
+                statusMessage.textContent = 'Sync Error. Check console.';
             }
         }
         
@@ -218,7 +279,6 @@
             const { collectionRef } = window.getGameCollectionRef();
             
             onSnapshot(collectionRef, (snapshot) => {
-                let activePlayers = 0;
                 snapshot.docChanges().forEach((change) => {
                     const data = change.doc.data();
                     const id = data.id;
@@ -232,12 +292,12 @@
                     }
                 });
 
-                // Count active players (including self, represented by camera)
-                activePlayers = Object.keys(otherPlayers).length + 1;
+                // Count active players (including self)
+                const activePlayers = Object.keys(otherPlayers).length + 1;
                 playerCountDisplay.textContent = `Players: ${activePlayers}`;
             }, (error) => {
                 console.error("Firestore Listen Error:", error);
-                document.getElementById('status-message').textContent = 'Live Data Error. Check console.';
+                statusMessage.textContent = 'Live Data Error. Check console.';
             });
         }
 
@@ -254,14 +314,12 @@
                 const material = new THREE.MeshBasicMaterial({ color: color, wireframe: false, transparent: true, opacity: 0.8 });
                 playerMesh = new THREE.Mesh(geometry, material);
                 
-                // Add player's ID tag
-                const spriteMap = new THREE.TextureLoader().load(
-                    'https://placehold.co/128x32/1e293b/2dd4bf?text=' + id.substring(0, 6)
-                );
+                const tagText = 'P-' + id.substring(0, 4);
+                const spriteMap = new THREE.TextureLoader().load(`https://placehold.co/128x32/1e293b/00ffaa?text=${tagText}`); 
                 const spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
                 const sprite = new THREE.Sprite(spriteMaterial);
                 sprite.scale.set(10, 2.5, 1);
-                sprite.position.set(0, PLAYER_HEIGHT / 2 + 1, 0); // Position above the cube
+                sprite.position.set(0, PLAYER_HALF_HEIGHT + 1, 0); // Position above the center
                 playerMesh.add(sprite);
 
                 scene.add(playerMesh);
@@ -269,9 +327,8 @@
                 console.log(`Player joined: ${id}`);
             }
 
-            // Update position and rotation
-            playerMesh.position.set(data.position.x, data.position.y - PLAYER_HEIGHT / 2, data.position.z);
-            // Simple rotation sync (yaw only for cube representation)
+            // Set world position (data.position.y is the center Y) and rotation
+            playerMesh.position.set(data.position.x, data.position.y, data.position.z);
             playerMesh.rotation.y = data.rotation.y; 
             
             otherPlayers[id].data = data;
@@ -287,6 +344,20 @@
                 console.log(`Player left: ${id}`);
             }
         }
+        
+        /**
+         * Generic utility for retrying API calls with exponential backoff.
+         */
+        async function retryOperation(apiCall, maxRetries = 5, delay = 100) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    return await apiCall();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                }
+            }
+        }
 
 
         // --- THREE.JS INITIALIZATION & GAME SETUP ---
@@ -297,51 +368,71 @@
         function init() {
             // Scene setup
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a); // primary-dark
-            scene.fog = new THREE.Fog(0x0f172a, 0, 500);
+            scene.background = new THREE.Color(0x0f172a); 
+            scene.fog = new THREE.Fog(0x0f172a, 10, 400); 
 
             // Camera setup
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(0, PLAYER_HEIGHT, 0); // Start player at origin above ground
+            camera.position.set(0, PLAYER_HALF_HEIGHT, 0); // Eyes are 6 units above the center pivot
+            camera.near = 0.5; // Adjusted near plane to prevent clipping when player gets close to walls
 
+            // NEW: Player Object Container (handles center position and rotation)
+            playerObject = new THREE.Object3D();
+            playerObject.position.copy(RESPAWN_POSITION); 
+            scene.add(playerObject);
+            playerObject.add(camera);
+            
             // Renderer setup
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             gameContainer.appendChild(renderer.domElement);
 
-            // Lighting (Ambient for basic visibility, directional for shadows)
-            const ambientLight = new THREE.AmbientLight(0x404040, 5);
+            // --- Raycaster Setup ---
+            raycaster = new THREE.Raycaster();
+            raycaster.ray.direction.set(0, -1, 0); // Always raycasting straight down
+
+            // --- Enhanced Lighting ---
+            const ambientLight = new THREE.AmbientLight(0xaaaaaa, 0.8); 
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
-            directionalLight.position.set(50, 50, 50);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 4); 
+            directionalLight.position.set(200, 300, 200); 
             scene.add(directionalLight);
 
-            // World Geometry (A simple floor and walls)
-            const floorGeometry = new THREE.PlaneGeometry(500, 500);
-            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x1e293b }); // slate-800
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.y = 0;
-            scene.add(floor);
+            // --- Positional Reference: Grid Helper ---
+            // Grid is now the floor, placed exactly at Y=0
+            const size = ARENA_SIZE;
+            const divisions = ARENA_SIZE / 10; // 40 divisions for a 400 unit map
+            const gridHelper = new THREE.GridHelper(size, divisions, 0x38bdf8, 0x00ffaa); 
+            gridHelper.material.opacity = 0.5;
+            gridHelper.material.transparent = true;
+            gridHelper.position.y = 0; // Set flush with the main floor platform
+            scene.add(gridHelper);
 
-            // Simple boundary walls (wireframe effect)
-            const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.2 });
-            
-            const wallSize = 500;
-            const wallHeight = 100;
-            
-            // Back Wall
-            const wall1 = new THREE.Mesh(new THREE.PlaneGeometry(wallSize, wallHeight), wallMaterial);
-            wall1.position.set(0, wallHeight / 2, -wallSize / 2);
-            scene.add(wall1);
 
-            // Front Wall
-            const wall2 = new THREE.Mesh(new THREE.PlaneGeometry(wallSize, wallHeight), wallMaterial);
-            wall2.position.set(0, wallHeight / 2, wallSize / 2);
-            wall2.rotation.y = Math.PI;
-            scene.add(wall2);
+            // --- PLATFORM GEOMETRY (Collidable Objects) ---
+            const boxGeometry = new THREE.BoxGeometry(1, 1, 1); 
             
-            // Resize handler
+            PLATFORMS_DATA.forEach(data => {
+                const isWall = data.opacity < 1;
+                
+                // Use MeshLambertMaterial for floors/platforms, and set opacity for walls
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: data.color, 
+                    transparent: isWall, 
+                    opacity: data.opacity 
+                });
+                
+                const platform = new THREE.Mesh(boxGeometry, material);
+                
+                platform.scale.set(data.size.x, data.size.y, data.size.z);
+                platform.position.copy(data.pos);
+                
+                // Add platform to both the scene and the collidable array
+                scene.add(platform);
+                collidableObjects.push(platform);
+            });
+            
             window.addEventListener('resize', onWindowResize, false);
         }
 
@@ -349,20 +440,20 @@
          * Responds to window resizing to keep the camera and renderer in sync.
          */
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
         }
         
-        // --- POINTER LOCK AND CONTROL IMPLEMENTATION ---
+        // --- POINTER LOCK AND CONTROL IMPLEMENTATION (Unchanged) ---
 
-        // Custom Pointer Lock implementation for simple FPS controls
         let isLocked = false;
         
         function setupControls() {
-            // Use the Pointer Lock API
             document.addEventListener('pointerlockchange', lockChangeAlert, false);
-            document.addEventListener('mozpointerlockchange', lockChangeAlert, false); // For Firefox
+            document.addEventListener('mozpointerlockchange', lockChangeAlert, false); 
 
             gameContainer.addEventListener('click', () => {
                 gameContainer.requestPointerLock();
@@ -373,7 +464,6 @@
                     document.mozPointerLockElement === gameContainer) {
                     isLocked = true;
                     instructionsPanel.style.display = 'none';
-                    // Attach mouse move listener only when locked
                     document.addEventListener('mousemove', onMouseMove, false);
                 } else {
                     isLocked = false;
@@ -382,7 +472,6 @@
                 }
             }
 
-            // Mouse Look Sensitivity
             const sensitivity = 0.002;
 
             function onMouseMove(event) {
@@ -391,26 +480,28 @@
                 const movementX = event.movementX || event.mozMovementX || 0;
                 const movementY = event.movementY || event.mozMovementY || 0;
 
-                // Adjust camera yaw (rotation around Y axis)
-                camera.rotation.y -= movementX * sensitivity;
+                // 1. Apply Yaw (Horizontal Look) to the playerObject container
+                playerObject.rotation.y -= movementX * sensitivity;
 
-                // Adjust camera pitch (rotation around X axis) - clamp it to avoid flipping
+                // 2. Apply Pitch (Vertical Look) to the camera child
                 let newPitch = camera.rotation.x - movementY * sensitivity;
+                // Clamp vertical look to avoid flipping (straight up/down)
                 newPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, newPitch));
                 camera.rotation.x = newPitch;
             }
 
             // Keyboard Movement Listeners
             document.addEventListener('keydown', (event) => {
-                if (!isLocked) return;
+                if (!isLocked || isDead) return; 
                 switch (event.code) {
                     case 'KeyW': keyState.w = true; break;
                     case 'KeyA': keyState.a = true; break;
                     case 'KeyS': keyState.s = true; break;
                     case 'KeyD': keyState.d = true; break;
                     case 'Space': 
-                        if (camera.position.y <= PLAYER_HEIGHT) { // Simple "jump" check
-                            velocity.y = 50; // Immediate vertical boost
+                        if (canJump) { 
+                            velocity.y = JUMP_SPEED; 
+                            canJump = false; 
                         }
                         break;
                 }
@@ -428,49 +519,133 @@
         }
         
         /**
-         * Updates player position based on keyboard input and frame time.
+         * Updates player position based on keyboard input and frame time (FPS-style).
          */
         function updateMovement(delta) {
-            // Apply gravity (simple non-collision version)
-            velocity.y -= 9.8 * 10 * delta; // 9.8 m/s^2 * scale factor
+            if (!isLocked || isDead) return; 
 
-            // Stop movement if not pressing keys
-            velocity.x -= velocity.x * 10.0 * delta;
-            velocity.z -= velocity.z * 10.0 * delta;
+            // --- Vertical Movement (Gravity & Jumping) ---
+            
+            // Apply gravity
+            velocity.y -= GRAVITY * delta;
 
-            // Apply friction/drag to Y velocity near the ground
-            if (camera.position.y <= PLAYER_HEIGHT) {
-                 velocity.y = Math.max(0, velocity.y); // Stop falling
-                 camera.position.y = PLAYER_HEIGHT; // Clamp to ground
+            // Apply vertical velocity to player center position
+            playerObject.position.y += velocity.y * delta; 
+            
+            // Set raycaster origin (center of player's base)
+            raycaster.ray.origin.copy(playerObject.position);
+            // We set the origin slightly above the actual center to give room for the ray to start
+            raycaster.ray.origin.y += 0.1; 
+            
+            // Max distance: Check from the center down to PLAYER_HALF_HEIGHT + small margin
+            raycaster.far = PLAYER_HALF_HEIGHT + 0.1; 
+
+            const intersections = raycaster.intersectObjects(collidableObjects, false);
+            
+            // Collision detected
+            if (intersections.length > 0) {
+                const hit = intersections[0];
+                // Distance from the ray origin (slightly above center) to the hit point
+                const distanceToHit = hit.distance;
+
+                // If player is falling (or standing) and the hit is within range of the feet
+                if (velocity.y <= 0 && distanceToHit <= PLAYER_HALF_HEIGHT + 0.1) {
+                    
+                    // The desired Y position for the player's center is the hit point Y + PLAYER_HALF_HEIGHT
+                    const desiredCenterY = hit.point.y + PLAYER_HALF_HEIGHT;
+
+                    // Clamp the player's position and stop vertical movement
+                    playerObject.position.y = desiredCenterY;
+                    velocity.y = 0;
+                    canJump = true;
+                }
+            } else {
+                // No collision, means we are in the air
+                canJump = false;
+            }
+            
+            // --- Horizontal Movement (W/A/S/D) ---
+
+            const actualMoveSpeed = MOVE_SPEED * delta;
+            
+            // 1. Calculate input direction vector (2D plane)
+            direction.x = 0;
+            direction.z = 0;
+
+            if (keyState.w) direction.z -= 1;
+            if (keyState.s) direction.z += 1;
+            if (keyState.a) direction.x -= 1;
+            if (keyState.d) direction.x += 1;
+
+            if (direction.x !== 0 || direction.z !== 0) {
+                direction.normalize(); 
+                
+                const forward = new THREE.Vector3(0, 0, direction.z).applyEuler(playerObject.rotation).multiplyScalar(actualMoveSpeed);
+                const right = new THREE.Vector3(direction.x, 0, 0).applyEuler(playerObject.rotation).multiplyScalar(actualMoveSpeed);
+
+                // Apply movement
+                playerObject.position.x += forward.x + right.x;
+                playerObject.position.z += forward.z + right.z;
             }
 
-            // Calculate directional vectors based on camera rotation
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            // --- HORIZONTAL WALL CLAMPING (Guarantees no clipping in the box arena) ---
+            const playerHalfSizeHorizontal = 2.5;
+            const wallBoundary = HALF_ARENA - playerHalfSizeHorizontal - 0.5; // 200 - 2.5 - 0.5 = 197
             
-            // Calculate movement vectors
-            if (keyState.w) velocity.add(forward.multiplyScalar(MOVE_SPEED * delta));
-            if (keyState.s) velocity.add(forward.multiplyScalar(-MOVE_SPEED * delta));
-            if (keyState.a) velocity.add(right.multiplyScalar(-MOVE_SPEED * delta));
-            if (keyState.d) velocity.add(right.multiplyScalar(MOVE_SPEED * delta));
+            // Clamp X
+            playerObject.position.x = Math.max(-wallBoundary, Math.min(wallBoundary, playerObject.position.x));
             
-            // Apply velocity to position
-            camera.position.x += velocity.x * delta;
-            camera.position.y += velocity.y * delta;
-            camera.position.z += velocity.z * delta;
-
-            // Simple arena bounds check (500x500 floor)
-            const bound = 240;
-            camera.position.x = Math.max(-bound, Math.min(bound, camera.position.x));
-            camera.position.z = Math.max(-bound, Math.min(bound, camera.position.z));
+            // Clamp Z
+            playerObject.position.z = Math.max(-wallBoundary, Math.min(wallBoundary, playerObject.position.z));
         }
+
+        /**
+         * Handles the death and respawn countdown.
+         */
+        function handleDeathAndRespawn(delta) {
+            if (!playerObject) return;
+
+            // Check for death condition (falling below the map)
+            if (!isDead && playerObject.position.y - PLAYER_HALF_HEIGHT < DEATH_Y_LEVEL) {
+                isDead = true;
+                respawnTimer = RESPAWN_TIME_MS;
+                velocity.set(0, 0, 0); // Stop movement immediately
+                statusMessage.classList.remove('text-red-400');
+                statusMessage.classList.add('text-accent-neon'); 
+                statusMessage.textContent = "FATAL ERROR: Fall detected. Respawning in 5.0s...";
+                console.log("Player died. Starting respawn countdown.");
+            }
+
+            if (isDead) {
+                respawnTimer -= delta * 1000;
+                
+                if (respawnTimer <= 0) {
+                    // RESPAWN
+                    isDead = false;
+                    playerObject.position.copy(RESPAWN_POSITION);
+                    velocity.set(0, 0, 0);
+                    canJump = true;
+                    statusMessage.textContent = ""; 
+                    statusMessage.classList.add('text-red-400'); 
+                    console.log("Player respawned.");
+                } else {
+                    // COUNTDOWN UPDATE
+                    const seconds = (respawnTimer / 1000).toFixed(1);
+                    statusMessage.textContent = `FATAL ERROR: Fall detected. Respawning in ${seconds}s...`;
+                    
+                    // Immediately place the player at the respawn spot visually while countdown runs
+                    playerObject.position.set(RESPAWN_POSITION.x, RESPAWN_POSITION.y, RESPAWN_POSITION.z);
+                }
+            }
+        }
+
 
         // --- MAIN ANIMATION LOOP ---
 
         window.startGameLoop = () => {
-            init(); // Setup Three.js scene
-            setupControls(); // Setup mouse/keyboard listeners
-            setupMultiplayerListener(); // Start listening for other players
+            init(); 
+            setupControls(); 
+            setupMultiplayerListener(); 
             clock = new THREE.Clock();
             animate();
         };
@@ -484,15 +659,18 @@
             const fps = 1 / delta;
             fpsDisplay.textContent = `FPS: ${Math.round(fps)}`;
             
-            // 2. Handle Movement
+            // 2. Handle Death and Respawn BEFORE Movement
+            handleDeathAndRespawn(delta);
+
+            // 3. Handle Movement
             if (isLocked) {
                 updateMovement(delta);
             }
 
-            // 3. Sync Player State to Firestore
+            // 4. Sync Player State to Firestore
             syncLocalPlayerState();
 
-            // 4. Render Scene
+            // 5. Render Scene
             renderer.render(scene, camera);
         }
 
