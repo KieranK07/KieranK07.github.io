@@ -8,42 +8,32 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Firebase Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Removed unnecessary imports from auth
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Ensure all needed functions are imported
-        import { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, increment, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables provided by the environment
+    
+    <!-- FIX: Firebase V8 Namespaced API for GitHub Pages compatibility -->
+    <!-- This replaces the failing type="module" imports and is compatible with static hosting -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <script>
+        // --- Firebase Initialization (V8 Style) ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Initialize Firebase and expose utilities globally
-        window.firebaseApp = initializeApp(firebaseConfig);
-        window.db = getFirestore(window.firebaseApp);
-        window.auth = getAuth(window.firebaseApp);
-        setLogLevel('Debug'); // Enable debug logging for Firestore
-
-        // --- EXPOSE FIRESTORE FUNCTIONS GLOBALLY ---
-        // These are required because the main game script block is not a module
-        window.onSnapshot = onSnapshot;
-        window.doc = doc;
-        window.collection = collection;
-        window.setDoc = setDoc; 
-        // -------------------------------------------
-
-
-        // Authentication function
+        // Initialize App and Services (V8 style)
+        window.firebaseApp = firebase.initializeApp(firebaseConfig);
+        window.db = firebase.firestore();
+        window.auth = firebase.auth();
+        
+        // Authentication function (V8 style)
         window.setupAuthAndStartGame = async () => {
             let userId = null;
             try {
                 if (initialAuthToken) {
-                    await signInWithCustomToken(window.auth, initialAuthToken);
+                    await window.auth.signInWithCustomToken(initialAuthToken);
                 } else {
-                    await signInAnonymously(window.auth);
+                    await window.auth.signInAnonymously();
                 }
                 userId = window.auth.currentUser?.uid || crypto.randomUUID();
                 document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
@@ -55,12 +45,13 @@
             }
         };
 
-        // Expose Firestore logic globally
+        // Expose Firestore logic globally (V8 style)
         window.getGameCollectionRef = () => {
             const userId = window.PLAYER_ID;
-            // Since doc and collection are now globally exposed, they can be used via window or implicitly
-            const userRef = doc(window.db, 'artifacts', appId, 'public', 'data', 'fps_players', userId);
-            const collectionRef = collection(window.db, 'artifacts', appId, 'public', 'data', 'fps_players');
+            // V8 API structure: db.collection(path).doc(id)
+            const collectionPath = `artifacts/${appId}/public/data/fps_players`;
+            const userRef = window.db.collection(collectionPath).doc(userId);
+            const collectionRef = window.db.collection(collectionPath);
             return { userRef, collectionRef };
         };
     </script>
@@ -221,19 +212,19 @@
         const statusMessage = document.getElementById('status-message');
 
 
-        // --- FIREBASE/FIRESTORE INTERACTION (Unchanged) ---
+        // --- FIREBASE/FIRESTORE INTERACTION (UPDATED FOR V8 API) ---
 
         /**
          * Pushes the current local player state to Firestore.
          */
         async function syncLocalPlayerState() {
-            if (!PLAYER_ID || !playerObject || !camera || !window.getGameCollectionRef || isDead) return; 
+            if (!PLAYER_ID || !playerObject || !gameContainer || isDead) return; 
             
             const now = Date.now();
             if (now - lastSyncTime < PLAYER_SYNC_RATE) return;
             lastSyncTime = now;
 
-            const { userRef } = window.getGameCollectionRef();
+            const { userRef } = window.getGameCollectionRef(); // Uses the V8 implementation defined globally
             
             const playerState = {
                 id: PLAYER_ID,
@@ -253,7 +244,8 @@
             };
 
             try {
-                await retryOperation(() => setDoc(userRef, playerState, { merge: true }));
+                // V8 change: userRef is a document reference, use .set()
+                await retryOperation(() => userRef.set(playerState, { merge: true }));
             } catch (error) {
                 console.error("Error writing player data to Firestore:", error);
                 statusMessage.textContent = 'Sync Error. Check console.';
@@ -268,7 +260,8 @@
 
             const { collectionRef } = window.getGameCollectionRef();
             
-            onSnapshot(collectionRef, (snapshot) => {
+            // V8 change: collectionRef is a collection reference, use .onSnapshot()
+            collectionRef.onSnapshot((snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     const data = change.doc.data();
                     const id = data.id;
@@ -305,6 +298,7 @@
                 playerMesh = new THREE.Mesh(geometry, material);
                 
                 const tagText = 'P-' + id.substring(0, 4);
+                // Ensure placeholder URL is correct for cross-origin use
                 const spriteMap = new THREE.TextureLoader().load(`https://placehold.co/128x32/1e293b/00ffaa?text=${tagText}`); 
                 const spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap, color: 0xffffff });
                 const sprite = new THREE.Sprite(spriteMaterial);
@@ -664,34 +658,41 @@
             renderer.render(scene, camera);
         }
 
-        // --- ENTRY POINT (Fixed for Module Loading Delay) ---
+        // --- ENTRY POINT (FIXED FOR MODULE LOADING DELAY) ---
         window.onload = function () {
             // Initial State: Show loading message
             startButton.disabled = true;
-            statusMessage.textContent = 'Awaiting module initialization...';
+            // IMPORTANT: Clear red status text here for the loading state
+            statusMessage.classList.remove('text-red-400');
+            statusMessage.classList.add('text-gray-400');
+            statusMessage.textContent = 'Initializing Firebase...'; // Changed message
             
-            // Function to handle the starting sequence when the module is ready
+            // Function to handle the starting sequence when the global setup is complete
             const handleStartButtonClick = () => {
                 statusMessage.textContent = 'Authenticating...';
                 startButton.disabled = true;
                 window.setupAuthAndStartGame();
             };
 
-            // Poll until the module script has defined the necessary function
-            const checkModuleReady = () => {
-                if (window.setupAuthAndStartGame) {
-                    // Module is ready, enable button and attach handler
+            // V8 Global scripts should be loaded and functions defined when window.onload fires.
+            const checkGlobalReady = () => {
+                // Check for core globally defined objects (firebase, db, auth)
+                if (typeof window.db !== 'undefined' && typeof window.auth !== 'undefined') { 
+                    // Global functions are available, enable button and attach handler
                     startButton.disabled = false;
                     statusMessage.textContent = 'Ready to enter the grid.';
+                    // Revert status message color for non-error text
+                    statusMessage.classList.remove('text-gray-400');
+                    statusMessage.classList.add('text-red-400'); 
                     startButton.addEventListener('click', handleStartButtonClick);
                 } else {
-                    // Retry check after a short delay (100ms)
-                    setTimeout(checkModuleReady, 100);
+                    // This acts as a robust check in case of slow CDN loading.
+                    setTimeout(checkGlobalReady, 100);
                 }
             };
 
-            // Start the check
-            checkModuleReady();
+            // Start the check after a slight delay
+            setTimeout(checkGlobalReady, 50);
         };
     </script>
 </body>
