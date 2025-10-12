@@ -1,3 +1,6 @@
+Of course. Here is the complete, single-file code with all the requested functionality integrated: player cleanup on exit, and the core mechanics for shooting, health, damage, and respawning.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,13 +8,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Multiplayer FPS Demo | Three.js & Firestore</title>
 
-<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Three.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-<!-- Firebase Compat (works on GitHub Pages) -->
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
@@ -35,6 +35,7 @@
     <div class="hud">
       <div class="bg-primary-dark/70 rounded-lg p-2 text-xs">
         <p id="fps-display">FPS: 0</p>
+        <p id="health-display" class="text-green-400">Health: 100</p>
         <p id="player-count-display">Players: 1</p>
         <p id="user-id-display" class="break-words max-w-[220px]">User ID: Connecting...</p>
         <p id="status-message" class="text-red-400 mt-1"></p>
@@ -59,7 +60,7 @@
 */
 
 /* ===== FIREBASE CONFIG =====
-   Replace values with your project's web config from Console -> Project settings -> SDK setup.
+    Replace values with your project's web config from Console -> Project settings -> SDK setup.
 */
 const firebaseConfig = {
   apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
@@ -111,6 +112,9 @@ const keyState = { w:false, a:false, s:false, d:false, space:false };
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 
+let localPlayerState = { health: 100 };
+const DAMAGE = 25;
+
 /* DOM */
 const gameContainer = document.getElementById('game-container');
 const fpsDisplay = document.getElementById('fps-display');
@@ -120,16 +124,25 @@ const statusMessage = document.getElementById('status-message');
 const startButton = document.getElementById('start-button');
 const instructionsPanel = document.getElementById('instructions');
 
+/* ===== PLAYER CLEANUP ON EXIT ===== */
+window.addEventListener('beforeunload', async (event) => {
+  if (playerDocRef) {
+    try {
+      await playerDocRef.delete();
+    } catch (e) {
+      console.error('Could not delete player document on exit:', e);
+    }
+  }
+});
+
 /* ===== FIRESTORE HELPERS ===== */
 function getGameCollectionRefs() {
-  // path: artifacts/{appId}/public/data/fps_players
   const artifacts = db.collection('artifacts').doc(appId);
   const publicDoc = artifacts.collection('public').doc('data');
   const playersColl = publicDoc.collection('fps_players');
   return { playersColl };
 }
 
-/* Retry helper */
 async function retryOperation(apiCall, maxRetries = 5, baseDelay = 100) {
   for (let i=0;i<maxRetries;i++){
     try { return await apiCall(); }
@@ -152,6 +165,7 @@ async function syncLocalPlayerState() {
     position: { x: playerObject.position.x, y: playerObject.position.y, z: playerObject.position.z },
     rotation: { x: camera.rotation.x, y: playerObject.rotation.y, z: 0 },
     isDead,
+    health: localPlayerState.health,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -166,7 +180,27 @@ async function syncLocalPlayerState() {
 /* ===== LISTENER: observe other players ===== */
 function setupMultiplayerListener() {
   if (!gameCollectionRef) return;
-  // listen for all players in the collection
+
+  const selfDocRef = gameCollectionRef.doc(PLAYER_ID);
+  selfDocRef.onSnapshot(doc => {
+      if (!doc.exists) return;
+      const data = doc.data();
+      localPlayerState.health = data.health;
+
+      const healthDisplay = document.getElementById('health-display');
+      healthDisplay.textContent = `Health: ${Math.round(localPlayerState.health)}`;
+      healthDisplay.style.color = localPlayerState.health < 50 ? '#f87171' : '#4ade80';
+
+      if (localPlayerState.health <= 0 && !isDead) {
+          isDead = true;
+          respawnTimer = 5000;
+          velocity.set(0, 0, 0);
+          statusMessage.classList.remove('text-red-400');
+          statusMessage.classList.add('text-accent-neon');
+          statusMessage.textContent = "SYSTEM FAILURE: Terminated. Respawning in 5.0s...";
+      }
+  });
+
   gameCollectionRef.onSnapshot(snapshot => {
     snapshot.docChanges().forEach(change => {
       const id = change.doc.id;
@@ -187,16 +221,16 @@ function setupMultiplayerListener() {
   });
 }
 
-/* Create/update remote player's mesh */
 function updateOtherPlayer(id, data) {
   if (!data) return;
   let entry = otherPlayers[id];
   if (!entry) {
     const geometry = new THREE.BoxGeometry(5, PLAYER_HEIGHT, 5);
-    const material = new THREE.MeshBasicMaterial({ color: Math.random()*0xffffff, transparent:true, opacity:0.9 });
+    const randomColor = new THREE.Color(Math.random() * 0xffffff);
+    const material = new THREE.MeshBasicMaterial({ color: randomColor, transparent:true, opacity:0.9 });
     const mesh = new THREE.Mesh(geometry, material);
+    mesh.userData.playerId = id;
 
-    // small name sprite above
     const tagText = 'P-'+id.substring(0,4);
     const spriteMap = new THREE.TextureLoader().load(`https://placehold.co/128x32/1e293b/00ffaa?text=${encodeURIComponent(tagText)}`);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: spriteMap }));
@@ -205,15 +239,30 @@ function updateOtherPlayer(id, data) {
     mesh.add(sprite);
 
     scene.add(mesh);
-    otherPlayers[id] = { mesh, data };
+    otherPlayers[id] = { mesh, data, originalColor: randomColor };
+  } else {
+    if (data.health < entry.data.health) {
+        entry.mesh.material.color.set(0xff0000);
+        setTimeout(() => {
+            if(otherPlayers[id]) {
+               otherPlayers[id].mesh.material.color.copy(otherPlayers[id].originalColor);
+            }
+        }, 150);
+    }
   }
+
   const mesh = otherPlayers[id].mesh;
   mesh.position.set(data.position.x, data.position.y, data.position.z);
   mesh.rotation.y = (data.rotation && data.rotation.y) || 0;
   otherPlayers[id].data = data;
+
+  if (data.isDead || data.health <= 0) {
+    mesh.visible = false;
+  } else {
+    mesh.visible = true;
+  }
 }
 
-/* Remove */
 function removeOtherPlayer(id) {
   const entry = otherPlayers[id];
   if (!entry) return;
@@ -276,6 +325,12 @@ function setupControls() {
   gameContainer.addEventListener('click', () => {
     gameContainer.requestPointerLock && gameContainer.requestPointerLock();
   });
+  
+  gameContainer.addEventListener('mousedown', (event) => {
+    if (isLocked && event.button === 0) { // Left mouse button
+        shoot();
+    }
+  });
 
   function lockChangeAlert(){
     if (document.pointerLockElement === gameContainer || document.mozPointerLockElement === gameContainer){
@@ -318,11 +373,45 @@ function setupControls() {
   });
 }
 
+/* ===== SHOOTING LOGIC ===== */
+async function handleShoot(targetId) {
+    if (!targetId) return;
+    const targetPlayerRef = gameCollectionRef.doc(targetId);
+    try {
+        await db.runTransaction(async (transaction) => {
+            const targetDoc = await transaction.get(targetPlayerRef);
+            if (!targetDoc.exists) { return; }
+            const currentHealth = targetDoc.data().health || 0;
+            const newHealth = Math.max(0, currentHealth - DAMAGE);
+            transaction.update(targetPlayerRef, { health: newHealth });
+        });
+    } catch (e) {
+        console.error("Transaction failure:", e);
+        statusMessage.textContent = 'Damage sync failed.';
+    }
+}
+
+function shoot() {
+    if (!isLocked || isDead) return;
+    const shootRaycaster = new THREE.Raycaster();
+    shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const otherPlayerMeshes = Object.values(otherPlayers).map(p => p.mesh);
+    const intersects = shootRaycaster.intersectObjects(otherPlayerMeshes, true); // Set recursive to true
+    if (intersects.length > 0) {
+        let targetMesh = intersects[0].object;
+        while (targetMesh.parent && !targetMesh.userData.playerId) {
+            targetMesh = targetMesh.parent;
+        }
+        if (targetMesh.userData.playerId) {
+            handleShoot(targetMesh.userData.playerId);
+        }
+    }
+}
+
 /* ===== MOVEMENT, PHYSICS, DEATH ===== */
 function updateMovement(delta) {
   if (!isLocked || isDead) return;
 
-  // gravity
   velocity.y -= GRAVITY * delta;
   playerObject.position.y += velocity.y * delta;
 
@@ -367,6 +456,7 @@ function handleDeathAndRespawn(delta) {
   if (!playerObject) return;
   if (!isDead && playerObject.position.y - PLAYER_HALF_HEIGHT < -50) {
     isDead = true; respawnTimer = 5000; velocity.set(0,0,0);
+    localPlayerState.health = 0;
     statusMessage.classList.remove('text-red-400'); statusMessage.classList.add('text-accent-neon');
     statusMessage.textContent = "FATAL ERROR: Fall detected. Respawning in 5.0s...";
   }
@@ -377,11 +467,14 @@ function handleDeathAndRespawn(delta) {
       isDead = false;
       playerObject.position.copy(RESPAWN_POSITION);
       velocity.set(0,0,0); canJump = true;
+      localPlayerState.health = 100;
       statusMessage.textContent = ""; statusMessage.classList.add('text-red-400');
     } else {
       const seconds = (respawnTimer/1000).toFixed(1);
-      statusMessage.textContent = `FATAL ERROR: Fall detected. Respawning in ${seconds}s...`;
-      playerObject.position.set(RESPAWN_POSITION.x, RESPAWN_POSITION.y, RESPAWN_POSITION.z);
+      const deathMessage = localPlayerState.health > 0 && playerObject.position.y - PLAYER_HALF_HEIGHT < -50 ?
+          `FATAL ERROR: Fall detected. Respawning in ${seconds}s...` :
+          `SYSTEM FAILURE: Terminated. Respawning in ${seconds}s...`;
+      statusMessage.textContent = deathMessage;
     }
   }
 }
@@ -396,7 +489,7 @@ function animate() {
   handleDeathAndRespawn(delta);
   if (isLocked) updateMovement(delta);
 
-  syncLocalPlayerState(); // push to firestore
+  syncLocalPlayerState();
   renderer.render(scene, camera);
 }
 
@@ -408,21 +501,19 @@ async function setupAuthAndStartGame() {
     PLAYER_ID = cred.user.uid;
     userIdDisplay.textContent = `User ID: ${PLAYER_ID}`;
 
-    // build refs
     const { playersColl } = getGameCollectionRefs();
     gameCollectionRef = playersColl;
     playerDocRef = playersColl.doc(PLAYER_ID);
 
-    // write initial state
     await playerDocRef.set({
       id: PLAYER_ID,
       position: { x: RESPAWN_POSITION.x, y: RESPAWN_POSITION.y, z: RESPAWN_POSITION.z },
       rotation: { x: camera ? camera.rotation.x : 0, y: 0, z: 0 },
       isDead: false,
+      health: 100,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge:true });
 
-    // init scene & start loop
     init();
     setupControls();
     setupMultiplayerListener();
@@ -435,9 +526,6 @@ async function setupAuthAndStartGame() {
   }
 }
 
-/* ===== LISTEN FOR OTHERS (helper used above) ===== */
-function listenForOtherPlayers() { setupMultiplayerListener(); }
-
 /* ===== ENTRY POINT BINDING ===== */
 window.onload = () => {
   startButton.disabled = true;
@@ -445,7 +533,6 @@ window.onload = () => {
   statusMessage.classList.add('text-gray-400');
   statusMessage.textContent = 'Initializing Firebase...';
 
-  // quick readiness check for firebase objects
   const checkReady = () => {
     if (typeof firebase !== 'undefined' && typeof db !== 'undefined' && typeof auth !== 'undefined') {
       startButton.disabled = false;
@@ -462,3 +549,4 @@ window.onload = () => {
 </script>
 </body>
 </html>
+```
