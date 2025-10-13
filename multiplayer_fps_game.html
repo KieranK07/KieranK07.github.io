@@ -111,7 +111,7 @@ const startButton = document.getElementById('start-button');
 const instructionsPanel = document.getElementById('instructions');
 const nameInput = document.getElementById('name-input');
 
-/* ===== PLAYER CLEANUP ON EXIT ===== */
+/* ===== PLAYER CLEANUP ON EXIT (CONFIRMED PRESENT) ===== */
 window.addEventListener('beforeunload', async () => {
   if (playerDocRef) { await playerDocRef.delete(); }
 });
@@ -135,7 +135,7 @@ async function syncLocalPlayerState() {
     id: PLAYER_ID,
     playerName: nameInput.value || 'Anon',
     position: { x: playerObject.position.x, y: playerObject.position.y, z: playerObject.position.z },
-    rotation: { x: camera.rotation.x, y: playerObject.rotation.y, z: camera.rotation.z }, // Use full rotation
+    rotation: { x: camera.rotation.x, y: playerObject.rotation.y, z: camera.rotation.z },
     isDead,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -196,11 +196,9 @@ function updateOtherPlayerData(id, data) {
     if (!entry || !data.position || !data.rotation) return;
     entry.targetPosition.set(data.position.x, data.position.y, data.position.z);
     
-    // Convert Euler rotation from Firestore to a Quaternion for smooth slerp
     const euler = new THREE.Euler(data.rotation.x, data.rotation.y, data.rotation.z, 'YXZ');
     entry.targetQuaternion.setFromEuler(euler);
     
-    // Handle death visibility
     entry.mesh.visible = !data.isDead;
 }
 
@@ -211,9 +209,8 @@ function removeOtherPlayer(id) {
   delete otherPlayers[id];
 }
 
-// THIS IS THE NEW FUNCTION FOR SMOOTH MOVEMENT
 function updateRemotePlayers(delta) {
-    const interpolationFactor = delta * 10; // Adjust this value for faster/slower interpolation
+    const interpolationFactor = delta * 10;
     for (const id in otherPlayers) {
         const player = otherPlayers[id];
         player.mesh.position.lerp(player.targetPosition, interpolationFactor);
@@ -392,7 +389,7 @@ function animate() {
   handleDeathAndRespawn(delta);
   if (isLocked) updateMovement(delta);
   
-  updateRemotePlayers(delta); // SMOOTH MOVEMENT CALL
+  updateRemotePlayers(delta);
 
   syncLocalPlayerState();
   renderer.render(scene, camera);
@@ -434,15 +431,28 @@ async function setupAuthAndStartGame() {
     statusMessage.textContent = '';
   } catch (err) {
     console.error("Auth/start error:", err);
-    statusMessage.textContent = 'Auth failed. Check console and Firebase config.';
+    statusMessage.textContent = 'Auth failed. Check console.';
     startButton.disabled = false;
     nameInput.disabled = false;
   }
 }
 
-/* ===== ENTRY POINT BINDING ===== */
+/* ===== ENTRY POINT BINDING (FIXED) ===== */
 window.onload = () => {
-  startButton.addEventListener('click', setupAuthAndStartGame);
+  startButton.disabled = true;
+  statusMessage.textContent = 'Initializing Firebase...';
+
+  // This check ensures Firebase is loaded before the button is enabled.
+  const checkReady = () => {
+    if (typeof firebase !== 'undefined' && typeof db !== 'undefined' && typeof auth !== 'undefined') {
+      startButton.disabled = false;
+      statusMessage.textContent = 'Ready to enter the grid.';
+      startButton.addEventListener('click', setupAuthAndStartGame);
+    } else {
+      setTimeout(checkReady, 100);
+    }
+  };
+  setTimeout(checkReady, 50);
 };
 </script>
 </body>
