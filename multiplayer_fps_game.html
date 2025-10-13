@@ -9,7 +9,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
 
 
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
@@ -82,8 +82,7 @@ let onMouseMove; // To hold the mouse move handler
 
 const PLAYER_HEIGHT = 12;
 const PLAYER_RADIUS = 2;
-const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
-const MOVE_SPEED = 15; // Adjusted for physics velocity
+const MOVE_SPEED = 15;
 const JUMP_FORCE = 350;
 const PLAYER_SYNC_RATE = 100;
 let lastSyncTime = 0;
@@ -181,6 +180,36 @@ function setupMultiplayerListener() {
   }, err => { console.error("Listen error:", err); });
 }
 
+function createPlayerModel(color = 0xffffff) {
+    const playerGroup = new THREE.Group();
+    const bodyMat = new THREE.MeshLambertMaterial({ color });
+
+    const cylinderHeight = PLAYER_HEIGHT - (PLAYER_RADIUS * 2);
+    const cylinderGeom = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, cylinderHeight, 16);
+    const cylinderMesh = new THREE.Mesh(cylinderGeom, bodyMat);
+    const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
+    cylinderMesh.position.y = PLAYER_HALF_HEIGHT;
+
+    const sphereGeom = new THREE.SphereGeometry(PLAYER_RADIUS, 16, 8);
+    const topCap = new THREE.Mesh(sphereGeom, bodyMat);
+    topCap.position.y = PLAYER_HALF_HEIGHT + (cylinderHeight / 2);
+
+    const bottomCap = new THREE.Mesh(sphereGeom, bodyMat);
+    bottomCap.position.y = PLAYER_HALF_HEIGHT - (cylinderHeight / 2);
+
+    const bodyGroup = new THREE.Group();
+    bodyGroup.add(cylinderMesh, topCap, bottomCap);
+    playerGroup.add(bodyGroup);
+
+    const headGeom = new THREE.BoxGeometry(4, 4, 4);
+    const headMat = new THREE.MeshLambertMaterial({ color: color - 0x222222 });
+    const head = new THREE.Mesh(headGeom, headMat);
+    head.position.y = PLAYER_HEIGHT + 2;
+    playerGroup.add(head);
+
+    return { playerGroup, head };
+}
+
 function addOtherPlayer(id, data) {
     const { playerGroup, head } = createPlayerModel(Math.random() * 0xffffff);
     playerGroup.position.set(data.position.x, data.position.y, data.position.z);
@@ -197,7 +226,6 @@ function addOtherPlayer(id, data) {
     otherPlayers[id] = {
         mesh: playerGroup,
         head: head,
-        // Remote players don't need physics bodies, we just move their mesh
         targetPosition: new THREE.Vector3().copy(playerGroup.position),
         targetBodyQuaternion: new THREE.Quaternion(),
         targetHeadPitch: 0,
@@ -236,19 +264,16 @@ function updateRemotePlayers(delta) {
 
 /* ===== SCENE AND PHYSICS SETUP ===== */
 function init() {
-  // THREE.js Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0f172a);
   scene.fog = new THREE.Fog(0x0f172a, 50, 450);
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 1000);
   
-  // Cannon-es World
-  world = new CANNON.World({
-    gravity: new CANNON.Vec3(0, -30, 0), // Stronger gravity
-  });
+  world = new CANNON.World();
+  world.gravity.set(0, -30, 0);
+  world.broadphase = new CANNON.NaiveBroadphase();
 
-  // Player Visuals
   const { playerGroup, head } = createPlayerModel(0x2dd4bf);
   playerObject = playerGroup;
   headMesh = head;
@@ -256,30 +281,26 @@ function init() {
   headMesh.add(camera);
   scene.add(playerObject);
 
-  // Player Physics Body (Capsule-like)
-  playerBody = new CANNON.Body({
-      mass: 5,
-      position: RESPAWN_POSITION,
-      shape: new CANNON.Sphere(PLAYER_RADIUS),
-  });
-  playerBody.fixedRotation = true; // Prevents tipping over
+  playerBody = new CANNON.Body({ mass: 5, position: new CANNON.Vec3().copy(RESPAWN_POSITION) });
+  const playerShape = new CANNON.Sphere(PLAYER_RADIUS);
+  playerBody.addShape(playerShape, new CANNON.Vec3(0, PLAYER_RADIUS, 0));
+  const cylinderShape = new CANNON.Cylinder(PLAYER_RADIUS, PLAYER_RADIUS, PLAYER_HEIGHT - PLAYER_RADIUS*2, 16);
+  playerBody.addShape(cylinderShape, new CANNON.Vec3(0, PLAYER_HEIGHT/2, 0));
+  playerBody.fixedRotation = true;
   playerBody.updateMassProperties();
   world.addBody(playerBody);
 
-  // Link Player Visuals and Physics
   objectsToUpdate.push({ mesh: playerObject, body: playerBody });
 
   renderer = new THREE.WebGLRenderer({ antialias:true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   gameContainer.appendChild(renderer.domElement);
 
-  // Lights and Helpers
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.8); scene.add(ambient);
   const dir = new THREE.DirectionalLight(0xffffff, 4); dir.position.set(200,300,200); scene.add(dir);
   const gridHelper = new THREE.GridHelper(ARENA_SIZE, ARENA_SIZE/10, 0x38bdf8, 0x00ffaa);
   gridHelper.material.opacity = 0.5; gridHelper.material.transparent = true; gridHelper.position.y = 0; scene.add(gridHelper);
 
-  // Create platforms with physics
   PLATFORMS_DATA.forEach(d => {
     const mat = new THREE.MeshLambertMaterial({ color:d.color, transparent: d.opacity<1, opacity:d.opacity });
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(d.size.x, d.size.y, d.size.z), mat);
@@ -287,9 +308,8 @@ function init() {
     if(d.rotation) mesh.rotation.copy(d.rotation);
     scene.add(mesh);
 
-    // Create corresponding physics body
     const shape = new CANNON.Box(new CANNON.Vec3(d.size.x / 2, d.size.y / 2, d.size.z / 2));
-    const body = new CANNON.Body({ mass: 0, shape }); // mass 0 makes it static
+    const body = new CANNON.Body({ mass: 0, shape });
     body.position.copy(mesh.position);
     body.quaternion.copy(mesh.quaternion);
     world.addBody(body);
@@ -305,7 +325,7 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-/* ===== INPUT / CONTROLS ===== */
+/* ===== INPUT / CONTROLS (FIXED MOUSE LOCK) ===== */
 function setupControls() {
     onMouseMove = (e) => {
         if (!isLocked) return;
@@ -331,18 +351,18 @@ function setupControls() {
 
   document.addEventListener('keydown', (ev) => {
     if (!isLocked || isDead) return;
-    keyState[ev.code.replace('Key', '').toLowerCase()] = true;
-    if (ev.code === 'Space') keyState.space = true;
+    const key = ev.code.replace('Key', '').toLowerCase();
+    if(keyState[key] !== undefined) keyState[key] = true;
   });
 
   document.addEventListener('keyup', (ev) => {
     if (!isLocked || isDead) return;
-    keyState[ev.code.replace('Key', '').toLowerCase()] = false;
-    if (ev.code === 'Space') keyState.space = false;
+    const key = ev.code.replace('Key', '').toLowerCase();
+    if(keyState[key] !== undefined) keyState[key] = false;
   });
 }
 
-/* ===== MOVEMENT AND PHYSICS ===== */
+/* ===== MOVEMENT (REWRITTEN FOR PHYSICS ENGINE) ===== */
 function updateMovement() {
     if (isDead) {
         playerBody.velocity.set(0,0,0);
@@ -354,28 +374,27 @@ function updateMovement() {
     direction.x = Number(keyState.d) - Number(keyState.a);
     direction.normalize();
 
-    const moveVector = new THREE.Vector3();
-    if (keyState.w || keyState.s) moveVector.z = direction.z * MOVE_SPEED;
-    if (keyState.a || keyState.d) moveVector.x = direction.x * MOVE_SPEED;
-
+    const moveVector = new THREE.Vector3(direction.x, 0, direction.z);
     moveVector.applyQuaternion(playerObject.quaternion);
 
-    // Apply velocity to physics body
-    playerBody.velocity.x = moveVector.x;
-    playerBody.velocity.z = moveVector.z;
+    playerBody.velocity.x = moveVector.x * MOVE_SPEED;
+    playerBody.velocity.z = moveVector.z * MOVE_SPEED;
     
-    // Jumping
-    const groundContact = new CANNON.Ray(playerBody.position, new CANNON.Vec3(0, -1, 0));
-    const result = new CANNON.RaycastResult();
-    world.raycastClosest(groundContact.from, groundContact.to, {}, result);
-    const onGround = result.hasHit && result.distance < PLAYER_RADIUS + 0.1;
+    const groundContactNormal = new CANNON.Vec3();
+    let onGround = false;
+    for (const contact of world.contacts) {
+        if(contact.bi === playerBody || contact.bj === playerBody){
+            if(contact.bi === playerBody) contact.ni.negate(groundContactNormal);
+            else groundContactNormal.copy(contact.ni);
+            if(groundContactNormal.y > 0.5) onGround = true;
+        }
+    }
 
     if (keyState.space && onGround) {
-        playerBody.applyImpulse(new CANNON.Vec3(0, JUMP_FORCE, 0));
-        keyState.space = false; // prevent multi-jump
+        playerBody.velocity.y = JUMP_FORCE / playerBody.mass;
+        keyState.space = false;
     }
 }
-
 
 function handleDeathAndRespawn() {
   if (!isDead && playerBody.position.y < -50) {
@@ -404,20 +423,22 @@ function animate() {
   const fps = 1 / delta;
   fpsDisplay.textContent = `FPS: ${Math.round(fps)}`;
   
-  // Update physics world
   world.step(1/60, delta);
 
   updateMovement();
   handleDeathAndRespawn();
   
-  // Sync physics bodies with three.js meshes
   for(const obj of objectsToUpdate){
     obj.mesh.position.copy(obj.body.position);
-    obj.mesh.quaternion.copy(obj.body.quaternion);
+    // Only sync player's YAW rotation from physics. Pitch is handled manually on the head.
+    if(obj.body === playerBody){
+        playerObject.quaternion.copy(obj.body.quaternion);
+    } else {
+        obj.mesh.quaternion.copy(obj.body.quaternion);
+    }
   }
   
   updateRemotePlayers(delta);
-
   syncLocalPlayerState();
   renderer.render(scene, camera);
 }
@@ -457,9 +478,8 @@ async function setupAuthAndStartGame() {
     animate();
     statusMessage.textContent = '';
     
-    // Fix: Force UI and controls active immediately
-    isLocked = true;
     instructionsPanel.style.display = 'none';
+    isLocked = true;
     document.addEventListener('mousemove', onMouseMove, false);
 
   } catch (err) {
@@ -481,7 +501,7 @@ window.onload = () => {
   });
 
   const checkReady = () => {
-    if (typeof firebase !== 'undefined' && typeof db !== 'undefined' && typeof auth !== 'undefined') {
+    if (typeof firebase !== 'undefined' && typeof db !== 'undefined' && typeof auth !== 'undefined' && typeof CANNON !== 'undefined') {
       startButton.disabled = false;
       statusMessage.textContent = 'Ready to enter the grid.';
     } else {
