@@ -175,15 +175,30 @@ function setupMultiplayerListener() {
   }, err => { console.error("Listen error:", err); });
 }
 
+// THIS FUNCTION IS NOW FIXED
 function createPlayerModel(color = 0xffffff) {
     const playerGroup = new THREE.Group();
-    
-    const bodyGeom = new THREE.CapsuleGeometry(PLAYER_RADIUS, PLAYER_HEIGHT - (PLAYER_RADIUS * 2), 4, 16);
     const bodyMat = new THREE.MeshLambertMaterial({ color });
-    const bodyMesh = new THREE.Mesh(bodyGeom, bodyMat);
-    bodyMesh.position.y = PLAYER_HALF_HEIGHT;
-    playerGroup.add(bodyMesh);
 
+    // Body (Cylinder)
+    const cylinderHeight = PLAYER_HEIGHT - (PLAYER_RADIUS * 2);
+    const cylinderGeom = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, cylinderHeight, 16);
+    const cylinderMesh = new THREE.Mesh(cylinderGeom, bodyMat);
+    cylinderMesh.position.y = PLAYER_HALF_HEIGHT;
+
+    // Top and Bottom Caps (Spheres)
+    const sphereGeom = new THREE.SphereGeometry(PLAYER_RADIUS, 16, 8);
+    const topCap = new THREE.Mesh(sphereGeom, bodyMat);
+    topCap.position.y = PLAYER_HALF_HEIGHT + (cylinderHeight / 2);
+
+    const bottomCap = new THREE.Mesh(sphereGeom, bodyMat);
+    bottomCap.position.y = PLAYER_HALF_HEIGHT - (cylinderHeight / 2);
+
+    const bodyGroup = new THREE.Group();
+    bodyGroup.add(cylinderMesh, topCap, bottomCap);
+    playerGroup.add(bodyGroup);
+
+    // Head (Box)
     const headGeom = new THREE.BoxGeometry(4, 4, 4);
     const headMat = new THREE.MeshLambertMaterial({ color: color - 0x222222 });
     const head = new THREE.Mesh(headGeom, headMat);
@@ -192,6 +207,7 @@ function createPlayerModel(color = 0xffffff) {
 
     return { playerGroup, head };
 }
+
 
 function addOtherPlayer(id, data) {
     const { playerGroup, head } = createPlayerModel(Math.random() * 0xffffff);
@@ -259,7 +275,6 @@ function init() {
   headMesh = head;
   playerObject.position.copy(RESPAWN_POSITION);
   
-  // THIS IS THE FIX: Start rotated 180 degrees to see the lobby
   playerObject.rotation.y = Math.PI;
 
   playerObject.traverse(child => { if (child.isMesh) child.visible = false; });
@@ -357,18 +372,16 @@ function updateMovement(delta) {
     playerObject.position.y += velocity.y * delta;
     
     raycaster.ray.origin.copy(playerObject.position);
-    raycaster.ray.origin.y += PLAYER_RADIUS; // Start raycast from center of capsule base
+    raycaster.ray.origin.y += PLAYER_RADIUS;
     raycaster.far = PLAYER_HALF_HEIGHT + PLAYER_RADIUS;
 
     const intersections = raycaster.intersectObjects(collidableObjects, false);
-    let onGround = false;
     if (intersections.length > 0) {
         const hit = intersections[0];
         if (hit.distance < PLAYER_HALF_HEIGHT + 0.1) {
             if (velocity.y <= 0) {
                 playerObject.position.y = hit.point.y + PLAYER_HALF_HEIGHT;
                 velocity.y = 0;
-                onGround = true;
                 canJump = true;
             }
         }
@@ -378,7 +391,7 @@ function updateMovement(delta) {
 
     const actualMoveSpeed = MOVE_SPEED * delta;
     direction.z = Number(keyState.w) - Number(keyState.s);
-    direction.x = Number(keyState.a) - Number(keyState.d);
+    direction.x = Number(keyState.d) - Number(keyState.a); // Corrected A/D for standard strafe
     direction.normalize();
 
     if (keyState.w || keyState.s || keyState.a || keyState.d) {
@@ -401,7 +414,7 @@ function handleDeathAndRespawn(delta) {
     if (respawnTimer <= 0) {
       isDead = false;
       playerObject.position.copy(RESPAWN_POSITION);
-      playerObject.rotation.y = Math.PI; // Also reset rotation on respawn
+      playerObject.rotation.y = Math.PI;
       velocity.set(0,0,0); canJump = true;
       statusMessage.textContent = "";
     } else {
