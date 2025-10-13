@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Multiplayer FPS Demo | Three.js & Firestore</title>
+<title>Multiplayer Demo | Three.js & Firestore</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -14,13 +14,14 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 
 <style>
-  /* Minimal styling (kept from original) */
+  /* Minimal styling */
   body, html { margin: 0; height: 100%; overflow: hidden; background:#0f172a; color:#f8fafc; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
   #game-container { position:absolute; inset:0; z-index:1; }
   #ui-overlay { position:fixed; inset:0; pointer-events:none; z-index:10; }
   #crosshair { position:absolute; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%; border:2px solid #2dd4bf; box-shadow:0 0 5px #2dd4bf; pointer-events:none; }
   #instructions { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(15,23,42,0.95); border:2px solid #2dd4bf; padding:3rem 4rem; text-align:center; border-radius:1rem; box-shadow:0 0 40px rgba(45,212,191,0.4); pointer-events:all; min-width:320px; }
   .hud { position:fixed; top:1rem; left:1rem; pointer-events:auto; z-index:11; }
+  .name-input { pointer-events:auto; background: #1e293b; border: 1px solid #38bdf8; color: #f8fafc; padding: 0.5rem 1rem; border-radius: 0.25rem; margin-bottom: 1.5rem; text-align: center; }
 </style>
 </head>
 <body class="font-mono">
@@ -32,7 +33,6 @@
     <div class="hud">
       <div class="bg-primary-dark/70 rounded-lg p-2 text-xs">
         <p id="fps-display">FPS: 0</p>
-        <p id="health-display" class="text-green-400">Health: 100</p>
         <p id="player-count-display">Players: 1</p>
         <p id="user-id-display" class="break-words max-w-[220px]">User ID: Connecting...</p>
         <p id="status-message" class="text-red-400 mt-1"></p>
@@ -40,8 +40,10 @@
     </div>
 
     <div id="instructions">
-      <h1 class="text-4xl font-bold text-accent-neon mb-6">SYSTEM BOOT SEQUENCE</h1>
-      <p class="text-gray-400 mb-6">Secure connection established. Initiating multi-user protocol...</p>
+      <h1 class="text-4xl font-bold text-accent-neon mb-4">SYSTEM BOOT SEQUENCE</h1>
+      <p class="text-gray-400 mb-6">Enter your callsign to establish connection.</p>
+      <input type="text" id="name-input" class="name-input" placeholder="Enter Name" maxlength="12">
+      <br>
       <button id="start-button" class="px-10 py-4 bg-accent-blue text-primary-dark text-lg font-extrabold rounded-full hover:bg-sky-300 transition duration-300 pointer-events-auto">
         ENTER THE GRID
       </button>
@@ -49,16 +51,7 @@
   </div>
 
 <script>
-/*
-  FULL Single-file Multiplayer FPS for static hosting (GitHub Pages).
-  - Uses Firebase compat (v11) SDKs so no bundler required.
-  - Replace the firebaseConfig object below with your project's config.
-  - Ensure Firestore rules permit authenticated users to read/write the fps_players path.
-*/
-
-/* ===== FIREBASE CONFIG =====
-    Replace values with your project's web config from Console -> Project settings -> SDK setup.
-*/
+/* ===== FIREBASE CONFIG ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
   authDomain: "fpsmult-5f414.firebaseapp.com",
@@ -72,12 +65,11 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-firebase.firestore.setLogLevel && firebase.firestore.setLogLevel("debug"); // optional
 
-/* ===== GLOBAL VARS (GAME + MULTIPLAYER) ===== */
-const appId = "default-app-id"; // change if you want per-project artifact grouping
+/* ===== GLOBAL VARS ===== */
+const appId = "default-app-id";
 let PLAYER_ID = null;
-let gameCollectionRef = null; // firestore collection reference: artifacts/{appId}/public/data/fps_players
+let gameCollectionRef = null;
 let playerDocRef = null;
 
 let scene, camera, renderer, clock;
@@ -109,9 +101,6 @@ const keyState = { w:false, a:false, s:false, d:false, space:false };
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 
-let localPlayerState = { health: 100 };
-const DAMAGE = 25;
-
 /* DOM */
 const gameContainer = document.getElementById('game-container');
 const fpsDisplay = document.getElementById('fps-display');
@@ -120,16 +109,11 @@ const userIdDisplay = document.getElementById('user-id-display');
 const statusMessage = document.getElementById('status-message');
 const startButton = document.getElementById('start-button');
 const instructionsPanel = document.getElementById('instructions');
+const nameInput = document.getElementById('name-input');
 
 /* ===== PLAYER CLEANUP ON EXIT ===== */
-window.addEventListener('beforeunload', async (event) => {
-  if (playerDocRef) {
-    try {
-      await playerDocRef.delete();
-    } catch (e) {
-      console.error('Could not delete player document on exit:', e);
-    }
-  }
+window.addEventListener('beforeunload', async () => {
+  if (playerDocRef) { await playerDocRef.delete(); }
 });
 
 /* ===== FIRESTORE HELPERS ===== */
@@ -138,16 +122,6 @@ function getGameCollectionRefs() {
   const publicDoc = artifacts.collection('public').doc('data');
   const playersColl = publicDoc.collection('fps_players');
   return { playersColl };
-}
-
-async function retryOperation(apiCall, maxRetries = 5, baseDelay = 100) {
-  for (let i=0;i<maxRetries;i++){
-    try { return await apiCall(); }
-    catch (err) {
-      if (i === maxRetries-1) throw err;
-      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
-    }
-  }
 }
 
 /* ===== SYNC: write local player state to Firestore ===== */
@@ -159,105 +133,75 @@ async function syncLocalPlayerState() {
 
   const playerState = {
     id: PLAYER_ID,
+    playerName: nameInput.value || 'Anon',
     position: { x: playerObject.position.x, y: playerObject.position.y, z: playerObject.position.z },
-    rotation: { x: camera.rotation.x, y: playerObject.rotation.y, z: 0 },
+    rotation: { x: camera.rotation.x, y: playerObject.rotation.y, z: camera.rotation.z }, // Use full rotation
     isDead,
-    health: localPlayerState.health,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   };
 
   try {
-    await retryOperation(() => playerDocRef.set(playerState, { merge:true }));
+    await playerDocRef.set(playerState, { merge:true });
   } catch (err) {
     console.error("Write error:", err);
-    statusMessage.textContent = 'Sync Error. Check console.';
   }
 }
 
-/* ===== LISTENER: observe other players ===== */
+/* ===== LISTENERS AND INTERPOLATION ===== */
 function setupMultiplayerListener() {
   if (!gameCollectionRef) return;
-
-  const selfDocRef = gameCollectionRef.doc(PLAYER_ID);
-  selfDocRef.onSnapshot(doc => {
-      if (!doc.exists) return;
-      const data = doc.data();
-      localPlayerState.health = data.health;
-
-      const healthDisplay = document.getElementById('health-display');
-      healthDisplay.textContent = `Health: ${Math.round(localPlayerState.health)}`;
-      healthDisplay.style.color = localPlayerState.health < 50 ? '#f87171' : '#4ade80';
-
-      if (localPlayerState.health <= 0 && !isDead) {
-          isDead = true;
-          respawnTimer = 5000;
-          velocity.set(0, 0, 0);
-          statusMessage.classList.remove('text-red-400');
-          statusMessage.classList.add('text-accent-neon');
-          statusMessage.textContent = "SYSTEM FAILURE: Terminated. Respawning in 5.0s...";
-      }
-  });
-
   gameCollectionRef.onSnapshot(snapshot => {
     snapshot.docChanges().forEach(change => {
       const id = change.doc.id;
       const data = change.doc.data();
       if (id === PLAYER_ID) return;
 
-      if (change.type === "added" || change.type === "modified") {
-        updateOtherPlayer(id, data);
+      if (change.type === "added") {
+        addOtherPlayer(id, data);
+      } else if (change.type === "modified") {
+        updateOtherPlayerData(id, data);
       } else if (change.type === "removed") {
         removeOtherPlayer(id);
       }
     });
-
     playerCountDisplay.textContent = `Players: ${Object.keys(otherPlayers).length + (PLAYER_ID?1:0)}`;
   }, err => {
     console.error("Listen error:", err);
-    statusMessage.textContent = 'Live Data Error. Check console.';
   });
 }
 
-function updateOtherPlayer(id, data) {
-  if (!data) return;
-  let entry = otherPlayers[id];
-  if (!entry) {
-    const geometry = new THREE.BoxGeometry(5, PLAYER_HEIGHT, 5);
-    const randomColor = new THREE.Color(Math.random() * 0xffffff);
-    const material = new THREE.MeshBasicMaterial({ color: randomColor, transparent:true, opacity:0.9 });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.userData.playerId = id;
-
-    const tagText = 'P-'+id.substring(0,4);
-    const spriteMap = new THREE.TextureLoader().load(`https://placehold.co/128x32/1e293b/00ffaa?text=${encodeURIComponent(tagText)}`);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: spriteMap }));
-    sprite.scale.set(10,2.5,1);
-    sprite.position.set(0, PLAYER_HALF_HEIGHT + 1, 0);
-    mesh.add(sprite);
-
-    scene.add(mesh);
-    otherPlayers[id] = { mesh, data, originalColor: randomColor };
-  } else {
-    if (data.health < entry.data.health) {
-        entry.mesh.material.color.set(0xff0000);
-        setTimeout(() => {
-            if(otherPlayers[id]) {
-               otherPlayers[id].mesh.material.color.copy(otherPlayers[id].originalColor);
-            }
-        }, 150);
-    }
-  }
-
-  const mesh = otherPlayers[id].mesh;
+function addOtherPlayer(id, data) {
+  const geometry = new THREE.BoxGeometry(5, PLAYER_HEIGHT, 5);
+  const material = new THREE.MeshBasicMaterial({ color: Math.random()*0xffffff });
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(data.position.x, data.position.y, data.position.z);
-  mesh.rotation.y = (data.rotation && data.rotation.y) || 0;
-  otherPlayers[id].data = data;
 
-  if (data.isDead || data.health <= 0) {
-    mesh.visible = false;
-  } else {
-    mesh.visible = true;
-  }
+  const playerName = data.playerName || 'Anon';
+  const spriteMap = new THREE.TextureLoader().load(`https://placehold.co/128x32/1e293b/00ffaa?text=${encodeURIComponent(playerName)}`);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: spriteMap }));
+  sprite.scale.set(10, 2.5, 1);
+  sprite.position.set(0, PLAYER_HALF_HEIGHT + 1, 0);
+  mesh.add(sprite);
+
+  scene.add(mesh);
+  otherPlayers[id] = {
+    mesh,
+    targetPosition: new THREE.Vector3().copy(mesh.position),
+    targetQuaternion: new THREE.Quaternion().copy(mesh.quaternion)
+  };
+}
+
+function updateOtherPlayerData(id, data) {
+    const entry = otherPlayers[id];
+    if (!entry || !data.position || !data.rotation) return;
+    entry.targetPosition.set(data.position.x, data.position.y, data.position.z);
+    
+    // Convert Euler rotation from Firestore to a Quaternion for smooth slerp
+    const euler = new THREE.Euler(data.rotation.x, data.rotation.y, data.rotation.z, 'YXZ');
+    entry.targetQuaternion.setFromEuler(euler);
+    
+    // Handle death visibility
+    entry.mesh.visible = !data.isDead;
 }
 
 function removeOtherPlayer(id) {
@@ -265,6 +209,16 @@ function removeOtherPlayer(id) {
   if (!entry) return;
   scene.remove(entry.mesh);
   delete otherPlayers[id];
+}
+
+// THIS IS THE NEW FUNCTION FOR SMOOTH MOVEMENT
+function updateRemotePlayers(delta) {
+    const interpolationFactor = delta * 10; // Adjust this value for faster/slower interpolation
+    for (const id in otherPlayers) {
+        const player = otherPlayers[id];
+        player.mesh.position.lerp(player.targetPosition, interpolationFactor);
+        player.mesh.quaternion.slerp(player.targetQuaternion, interpolationFactor);
+    }
 }
 
 /* ===== THREE.JS SETUP ===== */
@@ -317,20 +271,13 @@ function onWindowResize() {
 /* ===== INPUT / CONTROLS ===== */
 function setupControls() {
   document.addEventListener('pointerlockchange', lockChangeAlert, false);
-  document.addEventListener('mozpointerlockchange', lockChangeAlert, false);
 
   gameContainer.addEventListener('click', () => {
     gameContainer.requestPointerLock && gameContainer.requestPointerLock();
   });
-  
-  gameContainer.addEventListener('mousedown', (event) => {
-    if (isLocked && event.button === 0) { // Left mouse button
-        shoot();
-    }
-  });
 
   function lockChangeAlert(){
-    if (document.pointerLockElement === gameContainer || document.mozPointerLockElement === gameContainer){
+    if (document.pointerLockElement === gameContainer){
       isLocked = true; instructionsPanel.style.display = 'none'; document.addEventListener('mousemove', onMouseMove, false);
     } else {
       isLocked = false; instructionsPanel.style.display = 'block'; document.removeEventListener('mousemove', onMouseMove, false);
@@ -340,8 +287,8 @@ function setupControls() {
   const sensitivity = 0.002;
   function onMouseMove(e){
     if (!isLocked) return;
-    const mx = e.movementX || e.mozMovementX || 0;
-    const my = e.movementY || e.mozMovementY || 0;
+    const mx = e.movementX || 0;
+    const my = e.movementY || 0;
     playerObject.rotation.y -= mx * sensitivity;
     let newPitch = camera.rotation.x - my * sensitivity;
     newPitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, newPitch));
@@ -368,41 +315,6 @@ function setupControls() {
       case 'KeyD': keyState.d = false; break;
     }
   });
-}
-
-/* ===== SHOOTING LOGIC ===== */
-async function handleShoot(targetId) {
-    if (!targetId) return;
-    const targetPlayerRef = gameCollectionRef.doc(targetId);
-    try {
-        await db.runTransaction(async (transaction) => {
-            const targetDoc = await transaction.get(targetPlayerRef);
-            if (!targetDoc.exists) { return; }
-            const currentHealth = targetDoc.data().health || 0;
-            const newHealth = Math.max(0, currentHealth - DAMAGE);
-            transaction.update(targetPlayerRef, { health: newHealth });
-        });
-    } catch (e) {
-        console.error("Transaction failure:", e);
-        statusMessage.textContent = 'Damage sync failed.';
-    }
-}
-
-function shoot() {
-    if (!isLocked || isDead) return;
-    const shootRaycaster = new THREE.Raycaster();
-    shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const otherPlayerMeshes = Object.values(otherPlayers).map(p => p.mesh);
-    const intersects = shootRaycaster.intersectObjects(otherPlayerMeshes, true); // Set recursive to true
-    if (intersects.length > 0) {
-        let targetMesh = intersects[0].object;
-        while (targetMesh.parent && !targetMesh.userData.playerId) {
-            targetMesh = targetMesh.parent;
-        }
-        if (targetMesh.userData.playerId) {
-            handleShoot(targetMesh.userData.playerId);
-        }
-    }
 }
 
 /* ===== MOVEMENT, PHYSICS, DEATH ===== */
@@ -453,8 +365,6 @@ function handleDeathAndRespawn(delta) {
   if (!playerObject) return;
   if (!isDead && playerObject.position.y - PLAYER_HALF_HEIGHT < -50) {
     isDead = true; respawnTimer = 5000; velocity.set(0,0,0);
-    localPlayerState.health = 0;
-    statusMessage.classList.remove('text-red-400'); statusMessage.classList.add('text-accent-neon');
     statusMessage.textContent = "FATAL ERROR: Fall detected. Respawning in 5.0s...";
   }
 
@@ -464,14 +374,10 @@ function handleDeathAndRespawn(delta) {
       isDead = false;
       playerObject.position.copy(RESPAWN_POSITION);
       velocity.set(0,0,0); canJump = true;
-      localPlayerState.health = 100;
-      statusMessage.textContent = ""; statusMessage.classList.add('text-red-400');
+      statusMessage.textContent = "";
     } else {
       const seconds = (respawnTimer/1000).toFixed(1);
-      const deathMessage = localPlayerState.health > 0 && playerObject.position.y - PLAYER_HALF_HEIGHT < -50 ?
-          `FATAL ERROR: Fall detected. Respawning in ${seconds}s...` :
-          `SYSTEM FAILURE: Terminated. Respawning in ${seconds}s...`;
-      statusMessage.textContent = deathMessage;
+      statusMessage.textContent = `FATAL ERROR: Fall detected. Respawning in ${seconds}s...`;
     }
   }
 }
@@ -485,6 +391,8 @@ function animate() {
 
   handleDeathAndRespawn(delta);
   if (isLocked) updateMovement(delta);
+  
+  updateRemotePlayers(delta); // SMOOTH MOVEMENT CALL
 
   syncLocalPlayerState();
   renderer.render(scene, camera);
@@ -492,7 +400,14 @@ function animate() {
 
 /* ===== GAME START / AUTH ===== */
 async function setupAuthAndStartGame() {
+  if (nameInput.value.trim() === '') {
+    statusMessage.textContent = 'Please enter a name.';
+    return;
+  }
+  startButton.disabled = true;
+  nameInput.disabled = true;
   statusMessage.textContent = 'Authenticating...';
+  
   try {
     const cred = await auth.signInAnonymously();
     PLAYER_ID = cred.user.uid;
@@ -504,12 +419,12 @@ async function setupAuthAndStartGame() {
 
     await playerDocRef.set({
       id: PLAYER_ID,
+      playerName: nameInput.value,
       position: { x: RESPAWN_POSITION.x, y: RESPAWN_POSITION.y, z: RESPAWN_POSITION.z },
-      rotation: { x: camera ? camera.rotation.x : 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       isDead: false,
-      health: 100,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge:true });
+    });
 
     init();
     setupControls();
@@ -520,28 +435,14 @@ async function setupAuthAndStartGame() {
   } catch (err) {
     console.error("Auth/start error:", err);
     statusMessage.textContent = 'Auth failed. Check console and Firebase config.';
+    startButton.disabled = false;
+    nameInput.disabled = false;
   }
 }
 
 /* ===== ENTRY POINT BINDING ===== */
 window.onload = () => {
-  startButton.disabled = true;
-  statusMessage.classList.remove('text-red-400');
-  statusMessage.classList.add('text-gray-400');
-  statusMessage.textContent = 'Initializing Firebase...';
-
-  const checkReady = () => {
-    if (typeof firebase !== 'undefined' && typeof db !== 'undefined' && typeof auth !== 'undefined') {
-      startButton.disabled = false;
-      statusMessage.textContent = 'Ready to enter the grid.';
-      statusMessage.classList.remove('text-gray-400');
-      statusMessage.classList.add('text-red-400');
-      startButton.addEventListener('click', setupAuthAndStartGame);
-    } else {
-      setTimeout(checkReady, 100);
-    }
-  };
-  setTimeout(checkReady, 50);
+  startButton.addEventListener('click', setupAuthAndStartGame);
 };
 </script>
 </body>
