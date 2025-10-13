@@ -72,7 +72,7 @@ let gameCollectionRef = null;
 let playerDocRef = null;
 
 let scene, camera, renderer, clock;
-let playerObject, headMesh, playerCollider;
+let playerObject, headMesh;
 const otherPlayers = {};
 let isLocked = false;
 
@@ -81,13 +81,14 @@ const PLAYER_RADIUS = 2;
 const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
 const MOVE_SPEED = 120;
 const JUMP_SPEED = 150;
-const GRAVITY = 9.8 * 40; // Slightly stronger gravity
+const GRAVITY = 9.8 * 40;
 const PLAYER_SYNC_RATE = 100;
 let lastSyncTime = 0;
 let canJump = false;
 let isDead = false;
 let respawnTimer = 0;
-const RESPAWN_POSITION = new THREE.Vector3(0, 10, 0);
+// NEW RESPAWN POS to see the lobby and fix controls
+const RESPAWN_POSITION = new THREE.Vector3(0, 5, 80);
 
 const ARENA_SIZE = 400;
 
@@ -103,8 +104,7 @@ const PLATFORMS_DATA = [
     { pos: new THREE.Vector3(-60, 20, 60), size: new THREE.Vector3(10, 40, 10), color: 0x00ffaa, opacity: 0.7 },
 ];
 
-let raycaster;
-let collidableObjects = [];
+let collidableMeshes = []; // Simplified array for collidable meshes
 const keyState = { w:false, a:false, s:false, d:false, space:false };
 const velocity = new THREE.Vector3();
 
@@ -268,13 +268,6 @@ function init() {
   headMesh = head;
   playerObject.position.copy(RESPAWN_POSITION);
   
-  playerObject.rotation.y = Math.PI;
-
-  // Create an invisible bounding box for the player for collision detection
-  playerCollider = new THREE.Box3();
-  const colliderSize = new THREE.Vector3(PLAYER_RADIUS * 2, PLAYER_HEIGHT, PLAYER_RADIUS * 2);
-  playerCollider.setFromCenterAndSize(playerObject.position, colliderSize);
-  
   playerObject.traverse(child => { if (child.isMesh) child.visible = false; });
   
   headMesh.add(camera);
@@ -283,8 +276,6 @@ function init() {
   renderer = new THREE.WebGLRenderer({ antialias:true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   gameContainer.appendChild(renderer.domElement);
-
-  raycaster = new THREE.Raycaster();
 
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.8); scene.add(ambient);
   const dir = new THREE.DirectionalLight(0xffffff, 4); dir.position.set(200,300,200); scene.add(dir);
@@ -299,9 +290,7 @@ function init() {
     m.scale.copy(d.size);
     m.position.copy(d.pos);
     if(d.rotation) m.rotation.copy(d.rotation);
-    m.updateMatrixWorld(); // Ensure matrix is up to date for bounding box
-    const box = new THREE.Box3().setFromObject(m);
-    collidableObjects.push({ mesh: m, boundingBox: box }); // Store mesh and its static bounding box
+    collidableMeshes.push(m);
     scene.add(m);
   });
 
@@ -348,7 +337,7 @@ function setupControls() {
       case 'KeyA': keyState.a = true; break;
       case 'KeyS': keyState.s = true; break;
       case 'KeyD': keyState.d = true; break;
-      case 'Space': if (canJump) { velocity.y = JUMP_SPEED; } break;
+      case 'Space': if (canJump) { velocity.y = JUMP_SPEED; canJump = false; } break;
     }
   });
 
@@ -364,76 +353,76 @@ function setupControls() {
 }
 
 /* ===== MOVEMENT, PHYSICS, DEATH (ALL BUGS FIXED) ===== */
-function checkCollisions(moveVector) {
-    const originalPosition = playerObject.position.clone();
-    const tempCollider = playerCollider.clone();
-
-    // Check X-axis collision
-    tempCollider.translate(new THREE.Vector3(moveVector.x, 0, 0));
-    for (const obstacle of collidableObjects) {
-        if (tempCollider.intersectsBox(obstacle.boundingBox)) {
-            moveVector.x = 0;
-            break;
-        }
-    }
-    tempCollider.copy(playerCollider); // Reset
-
-    // Check Z-axis collision
-    tempCollider.translate(new THREE.Vector3(0, 0, moveVector.z));
-    for (const obstacle of collidableObjects) {
-        if (tempCollider.intersectsBox(obstacle.boundingBox)) {
-            moveVector.z = 0;
-            break;
-        }
-    }
-    tempCollider.copy(playerCollider); // Reset
-}
-
-
 function updateMovement(delta) {
-    if (!isLocked || isDead) return;
+    if (isDead) return;
 
-    // --- Ground Check (Fixes Jitter) ---
-    raycaster.set(playerObject.position, new THREE.Vector3(0, -1, 0));
-    raycaster.far = PLAYER_HALF_HEIGHT + 0.1;
-    const groundIntersects = raycaster.intersectObjects(collidableObjects.map(c => c.mesh), false);
+    const moveSpeed = MOVE_SPEED * delta;
+    
+    // --- Ground Check and Vertical Movement (Jitter Fix) ---
+    const groundRaycaster = new THREE.Raycaster(playerObject.position, new THREE.Vector3(0, -1, 0), 0, PLAYER_HALF_HEIGHT + 0.1);
+    const groundIntersects = groundRaycaster.intersectObjects(collidableMeshes);
     const onGround = groundIntersects.length > 0;
 
     if (onGround) {
-        const hit = groundIntersects[0];
-        // Snap to ground if falling onto it
-        if (velocity.y < 0) {
-            playerObject.position.y = hit.point.y + PLAYER_HALF_HEIGHT;
-            velocity.y = 0;
-        }
+        velocity.y = Math.max(0, velocity.y); // Stop downward velocity, but allow upward (jump)
         canJump = true;
     } else {
-        // Apply gravity if in the air
-        velocity.y -= GRAVITY * delta;
+        velocity.y -= GRAVITY * delta; // Apply gravity if in the air
         canJump = false;
     }
     
-    // --- Horizontal Movement ---
-    const actualMoveSpeed = MOVE_SPEED * delta;
+    playerObject.position.y += velocity.y * delta;
+
+    // After applying gravity, snap to ground to prevent falling through floor
+    if(velocity.y < 0) {
+        const snapRaycaster = new THREE.Raycaster(playerObject.position, new THREE.Vector3(0, -1, 0), 0, PLAYER_HALF_HEIGHT + 0.1);
+        const snapIntersects = snapRaycaster.intersectObjects(collidableMeshes);
+        if(snapIntersects.length > 0){
+            playerObject.position.y = snapIntersects[0].point.y + PLAYER_HALF_HEIGHT;
+            velocity.y = 0;
+            canJump = true;
+        }
+    }
+
+    // --- Horizontal Movement and Collision ---
     const direction = new THREE.Vector3();
     direction.z = Number(keyState.s) - Number(keyState.w); // W/S Fixed
     direction.x = Number(keyState.d) - Number(keyState.a);
-    direction.normalize(); 
-    
+    direction.normalize();
+
     const moveVector = new THREE.Vector3();
-    if (keyState.w || keyState.s) moveVector.z = direction.z * actualMoveSpeed;
-    if (keyState.a || keyState.d) moveVector.x = direction.x * actualMoveSpeed;
+    if (keyState.w || keyState.s) moveVector.z = direction.z * moveSpeed;
+    if (keyState.a || keyState.d) moveVector.x = direction.x * moveSpeed;
     
+    // Rotate move vector by player's rotation
     moveVector.applyQuaternion(playerObject.quaternion);
 
-    // --- Side Collision Check ---
-    playerCollider.setFromCenterAndSize(playerObject.position, new THREE.Vector3(PLAYER_RADIUS * 2, PLAYER_HEIGHT, PLAYER_RADIUS * 2));
-    checkCollisions(moveVector);
-
+    // Collision detection using rays
+    const collisionRaycaster = new THREE.Raycaster();
+    const rayDirections = [
+        new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+        new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1),
+    ];
+    
+    let isColliding = false;
+    for(const rayDir of rayDirections){
+        const worldDir = rayDir.clone().applyQuaternion(playerObject.quaternion);
+        // Cast from two points for better coverage (waist and knees)
+        const heights = [PLAYER_HALF_HEIGHT, PLAYER_HALF_HEIGHT / 2];
+        for(const h of heights){
+            const origin = new THREE.Vector3(playerObject.position.x, playerObject.position.y - PLAYER_HALF_HEIGHT + h, playerObject.position.z);
+            collisionRaycaster.set(origin, worldDir);
+            collisionRaycaster.far = PLAYER_RADIUS + 0.1;
+            const intersects = collisionRaycaster.intersectObjects(collidableMeshes);
+            if(intersects.length > 0){
+                // If moving into the wall, nullify that component of movement
+                if ( (moveVector.x > 0 && worldDir.x > 0) || (moveVector.x < 0 && worldDir.x < 0) ) moveVector.x = 0;
+                if ( (moveVector.z > 0 && worldDir.z > 0) || (moveVector.z < 0 && worldDir.z < 0) ) moveVector.z = 0;
+            }
+        }
+    }
+    
     playerObject.position.add(moveVector);
-
-    // --- Vertical Movement (Gravity/Jumping) ---
-    playerObject.position.y += velocity.y * delta;
 }
 
 function handleDeathAndRespawn(delta) {
@@ -444,11 +433,12 @@ function handleDeathAndRespawn(delta) {
   }
 
   if (isDead) {
+    playerObject.visible = false;
     respawnTimer -= delta * 1000;
     if (respawnTimer <= 0) {
       isDead = false;
+      playerObject.visible = true;
       playerObject.position.copy(RESPAWN_POSITION);
-      playerObject.rotation.y = Math.PI;
       velocity.set(0,0,0); canJump = true;
       statusMessage.textContent = "";
     } else {
@@ -465,7 +455,7 @@ function animate() {
   const fps = 1 / delta;
   fpsDisplay.textContent = `FPS: ${Math.round(fps)}`;
 
-  if (!isDead) updateMovement(delta);
+  updateMovement(delta);
   handleDeathAndRespawn(delta);
   
   updateRemotePlayers(delta);
@@ -497,7 +487,7 @@ async function setupAuthAndStartGame() {
       id: PLAYER_ID,
       playerName: nameInput.value,
       position: { x: RESPAWN_POSITION.x, y: RESPAWN_POSITION.y, z: RESPAWN_POSITION.z },
-      rotation: { x: 0, y: Math.PI, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       isDead: false,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -508,10 +498,6 @@ async function setupAuthAndStartGame() {
     clock = new THREE.Clock();
     animate();
     statusMessage.textContent = '';
-    
-    // Fix: Immediately request pointer lock after setup
-    gameContainer.requestPointerLock?.();
-
   } catch (err) {
     console.error("Auth/start error:", err);
     statusMessage.textContent = 'Auth failed. Check console.';
@@ -525,11 +511,18 @@ window.onload = () => {
   startButton.disabled = true;
   statusMessage.textContent = 'Initializing Firebase...';
   
+  // FIX: Separate pointer lock request from async setup
+  startButton.addEventListener('click', () => {
+      // This must be called directly in the event listener
+      gameContainer.requestPointerLock?.();
+      // Then proceed with the game setup
+      setupAuthAndStartGame();
+  });
+
   const checkReady = () => {
     if (typeof firebase !== 'undefined' && typeof db !== 'undefined' && typeof auth !== 'undefined') {
       startButton.disabled = false;
       statusMessage.textContent = 'Ready to enter the grid.';
-      startButton.addEventListener('click', setupAuthAndStartGame);
     } else {
       setTimeout(checkReady, 100);
     }
