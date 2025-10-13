@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Multiplayer Demo | Three.js & Firestore</title>
+<title>Multiplayer Demo | Physics Engine</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.min.js"></script>
+
 
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
@@ -43,7 +46,7 @@
       <p class="text-gray-400 mb-6">Enter your callsign to establish connection.</p>
       <input type="text" id="name-input" class="name-input" placeholder="Enter Name" maxlength="12">
       <br>
-      <button id="start-button" class="px-10 py-4 bg-accent-blue text-primary-dark text-lg font-extrabold rounded-full hover:bg-sky-300 transition duration-300 pointer-events-auto">
+      <button id="start-button" class="px-10 py-4 bg-accent-blue text-primary-dark text-lg font-extrabold rounded-full hover:bg-sky-300 transition duration-300 pointer-events:auto">
         ENTER THE GRID
       </button>
     </div>
@@ -71,26 +74,24 @@ let PLAYER_ID = null;
 let gameCollectionRef = null;
 let playerDocRef = null;
 
-let scene, camera, renderer, clock;
-let playerObject, headMesh;
+let scene, camera, renderer, clock, world;
+let playerObject, headMesh, playerBody;
 const otherPlayers = {};
 let isLocked = false;
+let onMouseMove; // To hold the mouse move handler
 
 const PLAYER_HEIGHT = 12;
 const PLAYER_RADIUS = 2;
 const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
-const MOVE_SPEED = 120;
-const JUMP_SPEED = 150;
-const GRAVITY = 9.8 * 40;
+const MOVE_SPEED = 15; // Adjusted for physics velocity
+const JUMP_FORCE = 350;
 const PLAYER_SYNC_RATE = 100;
 let lastSyncTime = 0;
-let canJump = false;
 let isDead = false;
 let respawnTimer = 0;
-const RESPAWN_POSITION = new THREE.Vector3(0, 5, 80);
+const RESPAWN_POSITION = new CANNON.Vec3(0, 5, 80);
 
 const ARENA_SIZE = 400;
-const HALF_ARENA = ARENA_SIZE / 2;
 
 const PLATFORMS_DATA = [
     { pos: new THREE.Vector3(0, -2.5, 0), size: new THREE.Vector3(ARENA_SIZE, 5, ARENA_SIZE), color: 0x101a2c },
@@ -104,9 +105,8 @@ const PLATFORMS_DATA = [
     { pos: new THREE.Vector3(-60, 20, 60), size: new THREE.Vector3(10, 40, 10), color: 0x00ffaa, opacity: 0.7 },
 ];
 
-let collidableMeshes = [];
+const objectsToUpdate = [];
 const keyState = { w:false, a:false, s:false, d:false, space:false };
-const velocity = new THREE.Vector3();
 
 /* DOM */
 const gameContainer = document.getElementById('game-container');
@@ -123,8 +123,8 @@ async function exitGame() {
     if (playerDocRef) {
         await playerDocRef.delete().catch(err => console.error("Error deleting player doc:", err));
     }
-    document.exitPointerLock(); // Ensure pointer lock is released
-    location.reload(); // Reload to go back to the clean login screen
+    document.exitPointerLock();
+    location.reload();
 }
 
 window.addEventListener('beforeunload', async () => {
@@ -139,9 +139,9 @@ function getGameCollectionRefs() {
   return { playersColl };
 }
 
-/* ===== SYNC: write local player state to Firestore ===== */
+/* ===== SYNC STATE ===== */
 async function syncLocalPlayerState() {
-  if (!PLAYER_ID || !playerObject || !playerDocRef || isDead) return;
+  if (!PLAYER_ID || !playerBody || !playerDocRef || isDead) return;
   const now = Date.now();
   if (now - lastSyncTime < PLAYER_SYNC_RATE) return;
   lastSyncTime = now;
@@ -149,7 +149,7 @@ async function syncLocalPlayerState() {
   const playerState = {
     id: PLAYER_ID,
     playerName: nameInput.value || 'Anon',
-    position: { x: playerObject.position.x, y: playerObject.position.y, z: playerObject.position.z },
+    position: { x: playerBody.position.x, y: playerBody.position.y, z: playerBody.position.z },
     rotation: { x: headMesh.rotation.x, y: playerObject.rotation.y, z: 0 },
     isDead,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -160,7 +160,7 @@ async function syncLocalPlayerState() {
   } catch (err) { console.error("Write error:", err); }
 }
 
-/* ===== LISTENERS AND INTERPOLATION ===== */
+/* ===== LISTENERS AND REMOTE PLAYERS ===== */
 function setupMultiplayerListener() {
   if (!gameCollectionRef) return;
   gameCollectionRef.onSnapshot(snapshot => {
@@ -181,35 +181,6 @@ function setupMultiplayerListener() {
   }, err => { console.error("Listen error:", err); });
 }
 
-function createPlayerModel(color = 0xffffff) {
-    const playerGroup = new THREE.Group();
-    const bodyMat = new THREE.MeshLambertMaterial({ color });
-
-    const cylinderHeight = PLAYER_HEIGHT - (PLAYER_RADIUS * 2);
-    const cylinderGeom = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, cylinderHeight, 16);
-    const cylinderMesh = new THREE.Mesh(cylinderGeom, bodyMat);
-    cylinderMesh.position.y = PLAYER_HALF_HEIGHT;
-
-    const sphereGeom = new THREE.SphereGeometry(PLAYER_RADIUS, 16, 8);
-    const topCap = new THREE.Mesh(sphereGeom, bodyMat);
-    topCap.position.y = PLAYER_HALF_HEIGHT + (cylinderHeight / 2);
-
-    const bottomCap = new THREE.Mesh(sphereGeom, bodyMat);
-    bottomCap.position.y = PLAYER_HALF_HEIGHT - (cylinderHeight / 2);
-
-    const bodyGroup = new THREE.Group();
-    bodyGroup.add(cylinderMesh, topCap, bottomCap);
-    playerGroup.add(bodyGroup);
-
-    const headGeom = new THREE.BoxGeometry(4, 4, 4);
-    const headMat = new THREE.MeshLambertMaterial({ color: color - 0x222222 });
-    const head = new THREE.Mesh(headGeom, headMat);
-    head.position.y = PLAYER_HEIGHT + 2;
-    playerGroup.add(head);
-
-    return { playerGroup, head };
-}
-
 function addOtherPlayer(id, data) {
     const { playerGroup, head } = createPlayerModel(Math.random() * 0xffffff);
     playerGroup.position.set(data.position.x, data.position.y, data.position.z);
@@ -226,6 +197,7 @@ function addOtherPlayer(id, data) {
     otherPlayers[id] = {
         mesh: playerGroup,
         head: head,
+        // Remote players don't need physics bodies, we just move their mesh
         targetPosition: new THREE.Vector3().copy(playerGroup.position),
         targetBodyQuaternion: new THREE.Quaternion(),
         targetHeadPitch: 0,
@@ -242,7 +214,6 @@ function updateOtherPlayerData(id, data) {
     entry.targetBodyQuaternion.setFromEuler(bodyEuler);
     
     entry.targetHeadPitch = data.rotation.x;
-
     entry.mesh.visible = !data.isDead;
 }
 
@@ -263,43 +234,65 @@ function updateRemotePlayers(delta) {
     }
 }
 
-/* ===== THREE.JS SETUP ===== */
+/* ===== SCENE AND PHYSICS SETUP ===== */
 function init() {
+  // THREE.js Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0f172a);
   scene.fog = new THREE.Fog(0x0f172a, 50, 450);
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 1000);
   
+  // Cannon-es World
+  world = new CANNON.World({
+    gravity: new CANNON.Vec3(0, -30, 0), // Stronger gravity
+  });
+
+  // Player Visuals
   const { playerGroup, head } = createPlayerModel(0x2dd4bf);
   playerObject = playerGroup;
   headMesh = head;
-  playerObject.position.copy(RESPAWN_POSITION);
-  
   playerObject.traverse(child => { if (child.isMesh) child.visible = false; });
-  
   headMesh.add(camera);
   scene.add(playerObject);
+
+  // Player Physics Body (Capsule-like)
+  playerBody = new CANNON.Body({
+      mass: 5,
+      position: RESPAWN_POSITION,
+      shape: new CANNON.Sphere(PLAYER_RADIUS),
+  });
+  playerBody.fixedRotation = true; // Prevents tipping over
+  playerBody.updateMassProperties();
+  world.addBody(playerBody);
+
+  // Link Player Visuals and Physics
+  objectsToUpdate.push({ mesh: playerObject, body: playerBody });
 
   renderer = new THREE.WebGLRenderer({ antialias:true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   gameContainer.appendChild(renderer.domElement);
 
+  // Lights and Helpers
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.8); scene.add(ambient);
   const dir = new THREE.DirectionalLight(0xffffff, 4); dir.position.set(200,300,200); scene.add(dir);
-
   const gridHelper = new THREE.GridHelper(ARENA_SIZE, ARENA_SIZE/10, 0x38bdf8, 0x00ffaa);
   gridHelper.material.opacity = 0.5; gridHelper.material.transparent = true; gridHelper.position.y = 0; scene.add(gridHelper);
 
-  const boxGeom = new THREE.BoxGeometry(1,1,1);
+  // Create platforms with physics
   PLATFORMS_DATA.forEach(d => {
     const mat = new THREE.MeshLambertMaterial({ color:d.color, transparent: d.opacity<1, opacity:d.opacity });
-    const m = new THREE.Mesh(boxGeom, mat);
-    m.scale.copy(d.size);
-    m.position.copy(d.pos);
-    if(d.rotation) m.rotation.copy(d.rotation);
-    collidableMeshes.push(m);
-    scene.add(m);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(d.size.x, d.size.y, d.size.z), mat);
+    mesh.position.copy(d.pos);
+    if(d.rotation) mesh.rotation.copy(d.rotation);
+    scene.add(mesh);
+
+    // Create corresponding physics body
+    const shape = new CANNON.Box(new CANNON.Vec3(d.size.x / 2, d.size.y / 2, d.size.z / 2));
+    const body = new CANNON.Body({ mass: 0, shape }); // mass 0 makes it static
+    body.position.copy(mesh.position);
+    body.quaternion.copy(mesh.quaternion);
+    world.addBody(body);
   });
 
   window.addEventListener('resize', onWindowResize, false);
@@ -314,7 +307,7 @@ function onWindowResize() {
 
 /* ===== INPUT / CONTROLS ===== */
 function setupControls() {
-    const onMouseMove = (e) => {
+    onMouseMove = (e) => {
         if (!isLocked) return;
         const mx = e.movementX || 0;
         const my = e.movementY || 0;
@@ -331,7 +324,6 @@ function setupControls() {
         } else {
             isLocked = false;
             document.removeEventListener('mousemove', onMouseMove, false);
-            // Exit on Escape key
             exitGame();
         }
     };
@@ -339,106 +331,68 @@ function setupControls() {
 
   document.addEventListener('keydown', (ev) => {
     if (!isLocked || isDead) return;
-    switch(ev.code){
-      case 'KeyW': keyState.w = true; break;
-      case 'KeyA': keyState.a = true; break;
-      case 'KeyS': keyState.s = true; break;
-      case 'KeyD': keyState.d = true; break;
-      case 'Space': if (canJump) { velocity.y = JUMP_SPEED; canJump = false; } break;
-    }
+    keyState[ev.code.replace('Key', '').toLowerCase()] = true;
+    if (ev.code === 'Space') keyState.space = true;
   });
 
   document.addEventListener('keyup', (ev) => {
-    if (!isLocked) return;
-    switch(ev.code){
-      case 'KeyW': keyState.w = false; break;
-      case 'KeyA': keyState.a = false; break;
-      case 'KeyS': keyState.s = false; break;
-      case 'KeyD': keyState.d = false; break;
-    }
+    if (!isLocked || isDead) return;
+    keyState[ev.code.replace('Key', '').toLowerCase()] = false;
+    if (ev.code === 'Space') keyState.space = false;
   });
 }
 
 /* ===== MOVEMENT AND PHYSICS ===== */
-function updateMovement(delta) {
-    if (isDead) return;
-
-    // --- Vertical Movement (Gravity, Jumping, Ceilings) ---
-    // Upward ray for ceiling detection
-    const ceilRaycaster = new THREE.Raycaster(playerObject.position, new THREE.Vector3(0, 1, 0), 0, PLAYER_HALF_HEIGHT + 3);
-    const ceilIntersects = ceilRaycaster.intersectObjects(collidableMeshes);
-    if (ceilIntersects.length > 0 && velocity.y > 0) {
-        velocity.y = 0; // Hit ceiling, stop upward movement
+function updateMovement() {
+    if (isDead) {
+        playerBody.velocity.set(0,0,0);
+        return;
     }
 
-    // Downward ray for ground detection
-    const groundRaycaster = new THREE.Raycaster(playerObject.position, new THREE.Vector3(0, -1, 0), 0, PLAYER_HALF_HEIGHT + 0.2);
-    const groundIntersects = groundRaycaster.intersectObjects(collidableMeshes);
-    const onGround = groundIntersects.length > 0;
-
-    if (onGround) {
-        velocity.y = Math.max(0, velocity.y);
-        playerObject.position.y = groundIntersects[0].point.y + PLAYER_HALF_HEIGHT; // Snap to ground
-        canJump = true;
-    } else {
-        velocity.y -= GRAVITY * delta;
-        canJump = false;
-    }
-    
-    // --- Horizontal Movement (Keyboard Input) ---
-    const moveSpeed = MOVE_SPEED * delta;
     const direction = new THREE.Vector3();
     direction.z = Number(keyState.s) - Number(keyState.w);
     direction.x = Number(keyState.d) - Number(keyState.a);
     direction.normalize();
+
+    const moveVector = new THREE.Vector3();
+    if (keyState.w || keyState.s) moveVector.z = direction.z * MOVE_SPEED;
+    if (keyState.a || keyState.d) moveVector.x = direction.x * MOVE_SPEED;
+
+    moveVector.applyQuaternion(playerObject.quaternion);
+
+    // Apply velocity to physics body
+    playerBody.velocity.x = moveVector.x;
+    playerBody.velocity.z = moveVector.z;
     
-    if (keyState.w || keyState.s || keyState.a || keyState.d) {
-        const moveVector = new THREE.Vector3(direction.x, 0, direction.z);
-        moveVector.applyQuaternion(playerObject.quaternion);
-        
-        // --- Collision Detection ---
-        const collisionRaycaster = new THREE.Raycaster();
-        const playerWaistY = playerObject.position.y;
-        const moveDirection = moveVector.clone().normalize();
-        
-        collisionRaycaster.set(new THREE.Vector3(playerObject.position.x, playerWaistY, playerObject.position.z), moveDirection);
-        collisionRaycaster.far = PLAYER_RADIUS + 0.5; // Check slightly ahead
-        
-        const collisionIntersects = collisionRaycaster.intersectObjects(collidableMeshes);
-        
-        if (collisionIntersects.length === 0) {
-             playerObject.position.add(moveVector.multiplyScalar(moveSpeed));
-        }
+    // Jumping
+    const groundContact = new CANNON.Ray(playerBody.position, new CANNON.Vec3(0, -1, 0));
+    const result = new CANNON.RaycastResult();
+    world.raycastClosest(groundContact.from, groundContact.to, {}, result);
+    const onGround = result.hasHit && result.distance < PLAYER_RADIUS + 0.1;
+
+    if (keyState.space && onGround) {
+        playerBody.applyImpulse(new CANNON.Vec3(0, JUMP_FORCE, 0));
+        keyState.space = false; // prevent multi-jump
     }
-    
-    // Apply final vertical velocity
-    playerObject.position.y += velocity.y * delta;
-    
-    // --- Arena Boundaries ---
-    const wallBoundary = HALF_ARENA - PLAYER_RADIUS;
-    playerObject.position.x = Math.max(-wallBoundary, Math.min(wallBoundary, playerObject.position.x));
-    playerObject.position.z = Math.max(-wallBoundary, Math.min(wallBoundary, playerObject.position.z));
 }
 
-function handleDeathAndRespawn(delta) {
-  if (!playerObject) return;
-  if (!isDead && playerObject.position.y < -50) {
-    isDead = true; respawnTimer = 5000; velocity.set(0,0,0);
+
+function handleDeathAndRespawn() {
+  if (!isDead && playerBody.position.y < -50) {
+    isDead = true; 
+    respawnTimer = 5000;
     statusMessage.textContent = "FATAL ERROR: Fall detected. Respawning in 5.0s...";
   }
 
   if (isDead) {
     playerObject.visible = false;
-    respawnTimer -= delta * 1000;
+    respawnTimer -= clock.getDelta() * 1000;
     if (respawnTimer <= 0) {
       isDead = false;
       playerObject.visible = true;
-      playerObject.position.copy(RESPAWN_POSITION);
-      velocity.set(0,0,0); canJump = true;
+      playerBody.position.copy(RESPAWN_POSITION);
+      playerBody.velocity.set(0, 0, 0);
       statusMessage.textContent = "";
-    } else {
-      const seconds = (respawnTimer/1000).toFixed(1);
-      statusMessage.textContent = `FATAL ERROR: Fall detected. Respawning in ${seconds}s...`;
     }
   }
 }
@@ -449,9 +403,18 @@ function animate() {
   const delta = clock.getDelta();
   const fps = 1 / delta;
   fpsDisplay.textContent = `FPS: ${Math.round(fps)}`;
+  
+  // Update physics world
+  world.step(1/60, delta);
 
-  updateMovement(delta);
-  handleDeathAndRespawn(delta);
+  updateMovement();
+  handleDeathAndRespawn();
+  
+  // Sync physics bodies with three.js meshes
+  for(const obj of objectsToUpdate){
+    obj.mesh.position.copy(obj.body.position);
+    obj.mesh.quaternion.copy(obj.body.quaternion);
+  }
   
   updateRemotePlayers(delta);
 
@@ -494,9 +457,10 @@ async function setupAuthAndStartGame() {
     animate();
     statusMessage.textContent = '';
     
-    // Manually set game state to active to fix input delay
+    // Fix: Force UI and controls active immediately
     isLocked = true;
     instructionsPanel.style.display = 'none';
+    document.addEventListener('mousemove', onMouseMove, false);
 
   } catch (err) {
     console.error("Auth/start error:", err);
