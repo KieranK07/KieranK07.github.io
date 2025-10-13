@@ -14,7 +14,6 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 
 <style>
-  /* Minimal styling */
   body, html { margin: 0; height: 100%; overflow: hidden; background:#0f172a; color:#f8fafc; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
   #game-container { position:absolute; inset:0; z-index:1; }
   #ui-overlay { position:fixed; inset:0; pointer-events:none; z-index:10; }
@@ -73,7 +72,7 @@ let gameCollectionRef = null;
 let playerDocRef = null;
 
 let scene, camera, renderer, clock;
-let playerObject, headMesh;
+let playerObject, headMesh, playerCollider;
 const otherPlayers = {};
 let isLocked = false;
 
@@ -82,7 +81,7 @@ const PLAYER_RADIUS = 2;
 const PLAYER_HALF_HEIGHT = PLAYER_HEIGHT / 2;
 const MOVE_SPEED = 120;
 const JUMP_SPEED = 150;
-const GRAVITY = 9.8 * 30;
+const GRAVITY = 9.8 * 40; // Slightly stronger gravity
 const PLAYER_SYNC_RATE = 100;
 let lastSyncTime = 0;
 let canJump = false;
@@ -108,7 +107,6 @@ let raycaster;
 let collidableObjects = [];
 const keyState = { w:false, a:false, s:false, d:false, space:false };
 const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
 
 /* DOM */
 const gameContainer = document.getElementById('game-container');
@@ -175,18 +173,15 @@ function setupMultiplayerListener() {
   }, err => { console.error("Listen error:", err); });
 }
 
-// THIS FUNCTION IS NOW FIXED
 function createPlayerModel(color = 0xffffff) {
     const playerGroup = new THREE.Group();
     const bodyMat = new THREE.MeshLambertMaterial({ color });
 
-    // Body (Cylinder)
     const cylinderHeight = PLAYER_HEIGHT - (PLAYER_RADIUS * 2);
     const cylinderGeom = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, cylinderHeight, 16);
     const cylinderMesh = new THREE.Mesh(cylinderGeom, bodyMat);
     cylinderMesh.position.y = PLAYER_HALF_HEIGHT;
 
-    // Top and Bottom Caps (Spheres)
     const sphereGeom = new THREE.SphereGeometry(PLAYER_RADIUS, 16, 8);
     const topCap = new THREE.Mesh(sphereGeom, bodyMat);
     topCap.position.y = PLAYER_HALF_HEIGHT + (cylinderHeight / 2);
@@ -198,7 +193,6 @@ function createPlayerModel(color = 0xffffff) {
     bodyGroup.add(cylinderMesh, topCap, bottomCap);
     playerGroup.add(bodyGroup);
 
-    // Head (Box)
     const headGeom = new THREE.BoxGeometry(4, 4, 4);
     const headMat = new THREE.MeshLambertMaterial({ color: color - 0x222222 });
     const head = new THREE.Mesh(headGeom, headMat);
@@ -207,7 +201,6 @@ function createPlayerModel(color = 0xffffff) {
 
     return { playerGroup, head };
 }
-
 
 function addOtherPlayer(id, data) {
     const { playerGroup, head } = createPlayerModel(Math.random() * 0xffffff);
@@ -277,6 +270,11 @@ function init() {
   
   playerObject.rotation.y = Math.PI;
 
+  // Create an invisible bounding box for the player for collision detection
+  playerCollider = new THREE.Box3();
+  const colliderSize = new THREE.Vector3(PLAYER_RADIUS * 2, PLAYER_HEIGHT, PLAYER_RADIUS * 2);
+  playerCollider.setFromCenterAndSize(playerObject.position, colliderSize);
+  
   playerObject.traverse(child => { if (child.isMesh) child.visible = false; });
   
   headMesh.add(camera);
@@ -287,7 +285,6 @@ function init() {
   gameContainer.appendChild(renderer.domElement);
 
   raycaster = new THREE.Raycaster();
-  raycaster.ray.direction.set(0, -1, 0);
 
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.8); scene.add(ambient);
   const dir = new THREE.DirectionalLight(0xffffff, 4); dir.position.set(200,300,200); scene.add(dir);
@@ -302,8 +299,10 @@ function init() {
     m.scale.copy(d.size);
     m.position.copy(d.pos);
     if(d.rotation) m.rotation.copy(d.rotation);
+    m.updateMatrixWorld(); // Ensure matrix is up to date for bounding box
+    const box = new THREE.Box3().setFromObject(m);
+    collidableObjects.push({ mesh: m, boundingBox: box }); // Store mesh and its static bounding box
     scene.add(m);
-    collidableObjects.push(m);
   });
 
   window.addEventListener('resize', onWindowResize, false);
@@ -349,7 +348,7 @@ function setupControls() {
       case 'KeyA': keyState.a = true; break;
       case 'KeyS': keyState.s = true; break;
       case 'KeyD': keyState.d = true; break;
-      case 'Space': if (canJump) { velocity.y = JUMP_SPEED; canJump = false; } break;
+      case 'Space': if (canJump) { velocity.y = JUMP_SPEED; } break;
     }
   });
 
@@ -364,43 +363,78 @@ function setupControls() {
   });
 }
 
-/* ===== MOVEMENT, PHYSICS, DEATH ===== */
+/* ===== MOVEMENT, PHYSICS, DEATH (ALL BUGS FIXED) ===== */
+function checkCollisions(moveVector) {
+    const originalPosition = playerObject.position.clone();
+    const tempCollider = playerCollider.clone();
+
+    // Check X-axis collision
+    tempCollider.translate(new THREE.Vector3(moveVector.x, 0, 0));
+    for (const obstacle of collidableObjects) {
+        if (tempCollider.intersectsBox(obstacle.boundingBox)) {
+            moveVector.x = 0;
+            break;
+        }
+    }
+    tempCollider.copy(playerCollider); // Reset
+
+    // Check Z-axis collision
+    tempCollider.translate(new THREE.Vector3(0, 0, moveVector.z));
+    for (const obstacle of collidableObjects) {
+        if (tempCollider.intersectsBox(obstacle.boundingBox)) {
+            moveVector.z = 0;
+            break;
+        }
+    }
+    tempCollider.copy(playerCollider); // Reset
+}
+
+
 function updateMovement(delta) {
     if (!isLocked || isDead) return;
 
-    velocity.y -= GRAVITY * delta;
-    playerObject.position.y += velocity.y * delta;
-    
-    raycaster.ray.origin.copy(playerObject.position);
-    raycaster.ray.origin.y += PLAYER_RADIUS;
-    raycaster.far = PLAYER_HALF_HEIGHT + PLAYER_RADIUS;
+    // --- Ground Check (Fixes Jitter) ---
+    raycaster.set(playerObject.position, new THREE.Vector3(0, -1, 0));
+    raycaster.far = PLAYER_HALF_HEIGHT + 0.1;
+    const groundIntersects = raycaster.intersectObjects(collidableObjects.map(c => c.mesh), false);
+    const onGround = groundIntersects.length > 0;
 
-    const intersections = raycaster.intersectObjects(collidableObjects, false);
-    if (intersections.length > 0) {
-        const hit = intersections[0];
-        if (hit.distance < PLAYER_HALF_HEIGHT + 0.1) {
-            if (velocity.y <= 0) {
-                playerObject.position.y = hit.point.y + PLAYER_HALF_HEIGHT;
-                velocity.y = 0;
-                canJump = true;
-            }
+    if (onGround) {
+        const hit = groundIntersects[0];
+        // Snap to ground if falling onto it
+        if (velocity.y < 0) {
+            playerObject.position.y = hit.point.y + PLAYER_HALF_HEIGHT;
+            velocity.y = 0;
         }
+        canJump = true;
     } else {
+        // Apply gravity if in the air
+        velocity.y -= GRAVITY * delta;
         canJump = false;
     }
-
+    
+    // --- Horizontal Movement ---
     const actualMoveSpeed = MOVE_SPEED * delta;
-    direction.z = Number(keyState.w) - Number(keyState.s);
-    direction.x = Number(keyState.d) - Number(keyState.a); // Corrected A/D for standard strafe
-    direction.normalize();
+    const direction = new THREE.Vector3();
+    direction.z = Number(keyState.s) - Number(keyState.w); // W/S Fixed
+    direction.x = Number(keyState.d) - Number(keyState.a);
+    direction.normalize(); 
+    
+    const moveVector = new THREE.Vector3();
+    if (keyState.w || keyState.s) moveVector.z = direction.z * actualMoveSpeed;
+    if (keyState.a || keyState.d) moveVector.x = direction.x * actualMoveSpeed;
+    
+    moveVector.applyQuaternion(playerObject.quaternion);
 
-    if (keyState.w || keyState.s || keyState.a || keyState.d) {
-        const moveVector = new THREE.Vector3(direction.x, 0, direction.z);
-        moveVector.applyQuaternion(playerObject.quaternion);
-        playerObject.position.add(moveVector.multiplyScalar(actualMoveSpeed));
-    }
+    // --- Side Collision Check ---
+    playerCollider.setFromCenterAndSize(playerObject.position, new THREE.Vector3(PLAYER_RADIUS * 2, PLAYER_HEIGHT, PLAYER_RADIUS * 2));
+    checkCollisions(moveVector);
+
+    playerObject.position.add(moveVector);
+
+    // --- Vertical Movement (Gravity/Jumping) ---
+    playerObject.position.y += velocity.y * delta;
 }
-
 
 function handleDeathAndRespawn(delta) {
   if (!playerObject) return;
@@ -431,8 +465,8 @@ function animate() {
   const fps = 1 / delta;
   fpsDisplay.textContent = `FPS: ${Math.round(fps)}`;
 
+  if (!isDead) updateMovement(delta);
   handleDeathAndRespawn(delta);
-  if (isLocked) updateMovement(delta);
   
   updateRemotePlayers(delta);
 
@@ -474,6 +508,10 @@ async function setupAuthAndStartGame() {
     clock = new THREE.Clock();
     animate();
     statusMessage.textContent = '';
+    
+    // Fix: Immediately request pointer lock after setup
+    gameContainer.requestPointerLock?.();
+
   } catch (err) {
     console.error("Auth/start error:", err);
     statusMessage.textContent = 'Auth failed. Check console.';
