@@ -73,7 +73,7 @@ let gameCollectionRef = null;
 let playerDocRef = null;
 
 let scene, camera, renderer, clock;
-let playerObject, headMesh; // Player object is the group, headMesh is for vertical rotation
+let playerObject, headMesh;
 const otherPlayers = {};
 let isLocked = false;
 
@@ -88,23 +88,16 @@ let lastSyncTime = 0;
 let canJump = false;
 let isDead = false;
 let respawnTimer = 0;
-// NEW RESPAWN POSITION FOR THE LOBBY
 const RESPAWN_POSITION = new THREE.Vector3(0, 10, 0);
 
 const ARENA_SIZE = 400;
 
-// NEW LOBBY PLATFORM DATA
 const PLATFORMS_DATA = [
-    // Ground plane
     { pos: new THREE.Vector3(0, -2.5, 0), size: new THREE.Vector3(ARENA_SIZE, 5, ARENA_SIZE), color: 0x101a2c },
-    // Central spawn platform
     { pos: new THREE.Vector3(0, 2.5, 0), size: new THREE.Vector3(60, 5, 60), color: 0x1e293b },
-    // High platform
     { pos: new THREE.Vector3(0, 32.5, -100), size: new THREE.Vector3(50, 5, 50), color: 0x1e293b },
-    // Ramps
     { pos: new THREE.Vector3(-45, 17.5, -50), size: new THREE.Vector3(20, 5, 120), color: 0x2dd4bf, rotation: new THREE.Euler(0, 0, -0.25) },
     { pos: new THREE.Vector3(45, 17.5, -50), size: new THREE.Vector3(20, 5, 120), color: 0x2dd4bf, rotation: new THREE.Euler(0, 0, 0.25) },
-    // Glowing pillars
     { pos: new THREE.Vector3(-60, 20, -60), size: new THREE.Vector3(10, 40, 10), color: 0x00ffaa, opacity: 0.7 },
     { pos: new THREE.Vector3(60, 20, -60), size: new THREE.Vector3(10, 40, 10), color: 0x00ffaa, opacity: 0.7 },
     { pos: new THREE.Vector3(60, 20, 60), size: new THREE.Vector3(10, 40, 10), color: 0x00ffaa, opacity: 0.7 },
@@ -151,7 +144,7 @@ async function syncLocalPlayerState() {
     id: PLAYER_ID,
     playerName: nameInput.value || 'Anon',
     position: { x: playerObject.position.x, y: playerObject.position.y, z: playerObject.position.z },
-    rotation: { x: headMesh.rotation.x, y: playerObject.rotation.y, z: 0 }, // Send head pitch and body yaw
+    rotation: { x: headMesh.rotation.x, y: playerObject.rotation.y, z: 0 },
     isDead,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -185,16 +178,14 @@ function setupMultiplayerListener() {
 function createPlayerModel(color = 0xffffff) {
     const playerGroup = new THREE.Group();
     
-    // Body (Capsule)
     const bodyGeom = new THREE.CapsuleGeometry(PLAYER_RADIUS, PLAYER_HEIGHT - (PLAYER_RADIUS * 2), 4, 16);
     const bodyMat = new THREE.MeshLambertMaterial({ color });
     const bodyMesh = new THREE.Mesh(bodyGeom, bodyMat);
     bodyMesh.position.y = PLAYER_HALF_HEIGHT;
     playerGroup.add(bodyMesh);
 
-    // Head (Box)
     const headGeom = new THREE.BoxGeometry(4, 4, 4);
-    const headMat = new THREE.MeshLambertMaterial({ color: color - 0x222222 }); // Slightly darker
+    const headMat = new THREE.MeshLambertMaterial({ color: color - 0x222222 });
     const head = new THREE.Mesh(headGeom, headMat);
     head.position.y = PLAYER_HEIGHT + 2;
     playerGroup.add(head);
@@ -210,7 +201,7 @@ function addOtherPlayer(id, data) {
     const spriteMap = new THREE.TextureLoader().load(`https://placehold.co/128x32/1e293b/00ffaa?text=${encodeURIComponent(playerName)}`);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: spriteMap }));
     sprite.scale.set(12, 3, 1);
-    sprite.position.y = PLAYER_HEIGHT + 6; // Position above the head
+    sprite.position.y = PLAYER_HEIGHT + 6;
     playerGroup.add(sprite);
 
     scene.add(playerGroup);
@@ -219,8 +210,8 @@ function addOtherPlayer(id, data) {
         mesh: playerGroup,
         head: head,
         targetPosition: new THREE.Vector3().copy(playerGroup.position),
-        targetBodyQuaternion: new THREE.Quaternion(), // For body yaw
-        targetHeadPitch: 0, // For head pitch
+        targetBodyQuaternion: new THREE.Quaternion(),
+        targetHeadPitch: 0,
     };
 }
 
@@ -230,11 +221,9 @@ function updateOtherPlayerData(id, data) {
     
     entry.targetPosition.set(data.position.x, data.position.y, data.position.z);
     
-    // Update target for body yaw
     const bodyEuler = new THREE.Euler(0, data.rotation.y, 0, 'YXZ');
     entry.targetBodyQuaternion.setFromEuler(bodyEuler);
     
-    // Update target for head pitch
     entry.targetHeadPitch = data.rotation.x;
 
     entry.mesh.visible = !data.isDead;
@@ -265,16 +254,17 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 1000);
   
-  // Create the local player model
-  const { playerGroup, head } = createPlayerModel(0x2dd4bf); // Local player is teal
+  const { playerGroup, head } = createPlayerModel(0x2dd4bf);
   playerObject = playerGroup;
   headMesh = head;
   playerObject.position.copy(RESPAWN_POSITION);
+  
+  // THIS IS THE FIX: Start rotated 180 degrees to see the lobby
+  playerObject.rotation.y = Math.PI;
 
-  // Make local player model invisible to self by hiding all its children
   playerObject.traverse(child => { if (child.isMesh) child.visible = false; });
   
-  headMesh.add(camera); // Attach camera to the head
+  headMesh.add(camera);
   scene.add(playerObject);
 
   renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -331,10 +321,8 @@ function setupControls() {
     const mx = e.movementX || 0;
     const my = e.movementY || 0;
     
-    // Yaw: Rotate the entire player object
     playerObject.rotation.y -= mx * sensitivity;
     
-    // Pitch: Rotate only the head
     let newPitch = headMesh.rotation.x - my * sensitivity;
     headMesh.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, newPitch));
   }
@@ -363,47 +351,47 @@ function setupControls() {
 
 /* ===== MOVEMENT, PHYSICS, DEATH ===== */
 function updateMovement(delta) {
-  if (!isLocked || isDead) return;
+    if (!isLocked || isDead) return;
 
-  velocity.y -= GRAVITY * delta;
-  
-  // Apply movement with temporary vector
-  const moveDelta = new THREE.Vector3(velocity.x * delta, velocity.y * delta, velocity.z * delta);
-  playerObject.position.add(moveDelta);
-  
-  // Simple raycast down for ground check
-  raycaster.ray.origin.copy(playerObject.position);
-  raycaster.far = PLAYER_HALF_HEIGHT + 0.1;
+    velocity.y -= GRAVITY * delta;
+    playerObject.position.y += velocity.y * delta;
+    
+    raycaster.ray.origin.copy(playerObject.position);
+    raycaster.ray.origin.y += PLAYER_RADIUS; // Start raycast from center of capsule base
+    raycaster.far = PLAYER_HALF_HEIGHT + PLAYER_RADIUS;
 
-  const intersections = raycaster.intersectObjects(collidableObjects, false);
-  if (intersections.length > 0) {
-    const hit = intersections[0];
-    if (velocity.y <= 0) {
-        playerObject.position.y = hit.point.y + PLAYER_HALF_HEIGHT;
-        velocity.y = 0;
-        canJump = true;
+    const intersections = raycaster.intersectObjects(collidableObjects, false);
+    let onGround = false;
+    if (intersections.length > 0) {
+        const hit = intersections[0];
+        if (hit.distance < PLAYER_HALF_HEIGHT + 0.1) {
+            if (velocity.y <= 0) {
+                playerObject.position.y = hit.point.y + PLAYER_HALF_HEIGHT;
+                velocity.y = 0;
+                onGround = true;
+                canJump = true;
+            }
+        }
+    } else {
+        canJump = false;
     }
-  } else { canJump = false; }
 
-  const actualMoveSpeed = MOVE_SPEED * delta;
-  direction.x = 0; direction.z = 0;
-  if (keyState.w) direction.z = -1;
-  if (keyState.s) direction.z = 1;
-  if (keyState.a) direction.x = -1;
-  if (keyState.d) direction.x = 1;
-
-  if (direction.x !== 0 || direction.z !== 0) {
+    const actualMoveSpeed = MOVE_SPEED * delta;
+    direction.z = Number(keyState.w) - Number(keyState.s);
+    direction.x = Number(keyState.a) - Number(keyState.d);
     direction.normalize();
-    const moveVector = new THREE.Vector3(direction.x, 0, direction.z);
-    moveVector.applyQuaternion(playerObject.quaternion); // Use quaternion for direction
-    playerObject.position.add(moveVector.multiplyScalar(actualMoveSpeed));
-  }
 
+    if (keyState.w || keyState.s || keyState.a || keyState.d) {
+        const moveVector = new THREE.Vector3(direction.x, 0, direction.z);
+        moveVector.applyQuaternion(playerObject.quaternion);
+        playerObject.position.add(moveVector.multiplyScalar(actualMoveSpeed));
+    }
 }
+
 
 function handleDeathAndRespawn(delta) {
   if (!playerObject) return;
-  if (!isDead && playerObject.position.y < -50) { // Simple fall check
+  if (!isDead && playerObject.position.y < -50) {
     isDead = true; respawnTimer = 5000; velocity.set(0,0,0);
     statusMessage.textContent = "FATAL ERROR: Fall detected. Respawning in 5.0s...";
   }
@@ -413,6 +401,7 @@ function handleDeathAndRespawn(delta) {
     if (respawnTimer <= 0) {
       isDead = false;
       playerObject.position.copy(RESPAWN_POSITION);
+      playerObject.rotation.y = Math.PI; // Also reset rotation on respawn
       velocity.set(0,0,0); canJump = true;
       statusMessage.textContent = "";
     } else {
@@ -461,7 +450,7 @@ async function setupAuthAndStartGame() {
       id: PLAYER_ID,
       playerName: nameInput.value,
       position: { x: RESPAWN_POSITION.x, y: RESPAWN_POSITION.y, z: RESPAWN_POSITION.z },
-      rotation: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: Math.PI, z: 0 },
       isDead: false,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
