@@ -95,15 +95,22 @@
     <div id="blocker">
         <div id="instructions">
             <h1>Simple FPS</h1>
-            <p>Click to Play</p>
-            <p><strong>Controls:</strong></p>
-            <p>WASD to move | SPACE to jump | MOUSE to look | CLICK to shoot</p>
+            <p>Enter a display name then press Play</p>
+            <p>
+                <input id="player-name" type="text" placeholder="Your name" style="width:60%;padding:8px;border-radius:6px;border:1px solid #333;background:#111;color:white" />
+            </p>
+            <p>
+                <button id="play-btn" style="padding:10px 18px;border-radius:8px;border:1px solid #333;background:#00ffff;color:#001;cursor:pointer">Play</button>
+            </p>
+            <p style="margin-top:12px"><strong>Controls:</strong></p>
+            <p>WASD to move | SPACE to jump | MOUSE to look | CLICK to shoot | ESC to leave</p>
         </div>
     </div>
     <div id="crosshair"></div>
     <div id="hud">Health: 100</div>
     <div id="hit-marker"></div>
     <div id="player-info">Connecting...</div>
+    <div id="online-players" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);padding:8px;border-radius:8px;font-size:0.9em;max-height:60vh;overflow:auto;min-width:160px">Players:<ul id="players-list" style="margin:6px 0 0 14px;padding:0;list-style:disc"></ul></div>
     
     <!-- Firebase Libraries -->
     <script type="module">
@@ -151,7 +158,7 @@
         const hitMarker = document.getElementById('hit-marker');
         const playerInfoEl = document.getElementById('player-info');
 
-        // --- INITIALIZE ---
+    // --- INITIALIZE ---
         init();
 
         function init() {
@@ -184,8 +191,7 @@
             setupPointerLock();
             setupEventListeners();
             
-            // Start Firebase after basic scene is ready
-            firebaseSetup();
+            // Note: Firebase join is deferred until the user clicks Play so they can enter a name first
             
             animate();
         }
@@ -253,7 +259,7 @@
             composer.addPass(bloomPass);
         }
 
-        // --- FIREBASE LOGIC ---
+    // --- FIREBASE LOGIC ---
         async function firebaseSetup() {
             // These globals are provided by the environment.
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-fps-app';
@@ -301,8 +307,12 @@
             playerDocRef = doc(db, playersCollectionRef.path, userId);
             const startPos = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
             
+            // Use the provided displayName if set on the auth user, otherwise fallback to local input
+            const displayName = (auth.currentUser && auth.currentUser.displayName) || (window.__display_name || 'Anonymous');
+
             player = {
                 id: userId,
+                name: displayName,
                 position: { x: startPos.x, y: startPos.y, z: startPos.z },
                 rotation: { x: 0, y: 0, z: 0 },
                 health: 100,
@@ -314,7 +324,23 @@
             
             await setDoc(playerDocRef, player);
 
-            window.addEventListener('beforeunload', () => deleteDoc(playerDocRef));
+            // Ensure we remove the player when the window unloads
+            const unloadHandler = async () => {
+                try { await deleteDoc(playerDocRef); } catch (e) { /* ignore */ }
+            };
+            window.addEventListener('beforeunload', unloadHandler);
+
+            // Also remove player when pointer lock is lost via ESC (user leaves)
+            document.addEventListener('pointerlockchange', () => {
+                if (!document.pointerLockElement) {
+                    // Delay a tiny bit to allow intentional re-entry; otherwise remove immediately
+                    setTimeout(async () => {
+                        if (!document.pointerLockElement) {
+                            try { await deleteDoc(playerDocRef); } catch (e) { /* ignore */ }
+                        }
+                    }, 200);
+                }
+            });
         }
         
         function listenForPlayers() {
@@ -347,7 +373,27 @@
                             delete players[playerData.id];
                         }
                     }
+                    // Update online players UI list
+                    updatePlayersListUI();
                 });
+            });
+        }
+
+        function updatePlayersListUI() {
+            const listEl = document.getElementById('players-list');
+            if (!listEl) return;
+            // Clear and rebuild
+            listEl.innerHTML = '';
+            // Add self first
+            if (player) {
+                const li = document.createElement('li');
+                li.textContent = `${player.name || 'You'} (you)`;
+                listEl.appendChild(li);
+            }
+            Object.values(players).forEach(p => {
+                const li = document.createElement('li');
+                li.textContent = p.data.name ? `${p.data.name}` : p.data.id.substring(0,6);
+                listEl.appendChild(li);
             });
         }
 
@@ -402,6 +448,32 @@
             document.addEventListener('mousedown', onMouseDown);
             window.addEventListener('resize', onWindowResize);
         }
+
+        // Wire up Play button and name input
+        const playBtn = document.getElementById('play-btn');
+        const playerNameInput = document.getElementById('player-name');
+        playBtn.addEventListener('click', async () => {
+            const name = (playerNameInput.value || '').trim() || `Player-${Math.floor(Math.random()*9000)+1000}`;
+            // Store on global so joinGame can access it before auth user displayName exists
+            window.__display_name = name;
+
+            // Start Firebase auth and join process
+            await firebaseSetup();
+
+            // After firebase auth completes, hide the blocker and request pointer lock
+            if (document.body.requestPointerLock) {
+                document.body.requestPointerLock();
+            }
+        });
+
+        // If user presses Escape we should remove them and show the blocker UI again
+        document.addEventListener('keydown', async (ev) => {
+            if (ev.code === 'Escape') {
+                // If we have a player doc, delete it and reset UI
+                try { if (playerDocRef) await deleteDoc(playerDocRef); } catch (e) { }
+                blocker.style.display = 'flex';
+            }
+        });
 
         function onMouseMove(event) {
             if (document.pointerLockElement) {
