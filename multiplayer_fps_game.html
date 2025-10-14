@@ -1,403 +1,309 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer FPS Game</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiplayer FPS (Firestore demo)</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background-color: #111;
-            color: white;
-        }
-        canvas {
-            display: block;
-        }
-        #blocker {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #instructions {
-            width: 50%;
-            text-align: center;
-            cursor: pointer;
-            padding: 20px;
-            background: rgba(20,20,20,0.8);
-            border-radius: 12px;
-            border: 1px solid #444;
-        }
-        #instructions h1 {
-            font-size: 2.5em;
-            margin-bottom: 0.5em;
-        }
-        #instructions p {
-            font-size: 1.2em;
-            line-height: 1.5;
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.7);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-        }
-        #hud {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background-color: rgba(0,0,0,0.5);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 1.2em;
-        }
-        #hit-marker {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 0, 0, 0);
-            pointer-events: none;
-            transition: background-color 0.1s ease-out;
-        }
-        #player-info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.9em;
-        }
+        html,body{height:100%;margin:0;background:#0b0b12;color:#fff;font-family:Inter,system-ui,Segoe UI,Arial}
+        canvas{display:block}
+        #blocker{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:20}
+        #instructions{width:420px;background:rgba(18,18,20,0.9);padding:20px;border-radius:12px;border:1px solid #263238;text-align:center}
+        #instructions input{width:70%;padding:8px;border-radius:6px;border:1px solid #333;background:#07070a;color:#fff}
+        #instructions button{margin-left:8px;padding:9px 12px;border-radius:8px;border:none;background:#00e5ff;color:#002}
+        #hud{position:fixed;left:18px;bottom:18px;background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:8px}
+        #players-panel{position:fixed;top:12px;right:12px;background:rgba(0,0,0,0.45);padding:8px;border-radius:8px;min-width:180px;max-height:60vh;overflow:auto}
+        #crosshair{position:fixed;left:50%;top:50%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(255,255,255,0.8);pointer-events:none}
     </style>
-    <!-- Import Map to resolve module specifiers -->
     <script type="importmap">
     {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
-            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
-        }
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+        "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+      }
     }
     </script>
 </head>
 <body>
     <div id="blocker">
         <div id="instructions">
-            <h1>Simple FPS</h1>
-            <p>Enter a display name then press Play</p>
-            <p>
-                <input id="player-name" type="text" placeholder="Your name" style="width:60%;padding:8px;border-radius:6px;border:1px solid #333;background:#111;color:white" />
-            </p>
-            <p>
-                <button id="play-btn" style="padding:10px 18px;border-radius:8px;border:1px solid #333;background:#00ffff;color:#001;cursor:pointer">Play</button>
-            </p>
-            <p style="margin-top:12px"><strong>Controls:</strong></p>
-            <p>WASD to move | SPACE to jump | MOUSE to look | CLICK to shoot | ESC to leave</p>
+            <h2 style="margin:0 0 10px">Multiplayer FPS — Enter name</h2>
+            <div>
+                <input id="player-name" placeholder="Your name" maxlength="24" />
+                <button id="play-btn">Play</button>
+            </div>
+            <p style="margin-top:12px;font-size:0.9em;color:#bfc">WASD to move · SPACE to jump · MOUSE to look · CLICK to shoot · ESC to leave</p>
         </div>
     </div>
+
     <div id="crosshair"></div>
-    <div id="hud">Health: 100</div>
-    <div id="hit-marker"></div>
-    <div id="player-info">Connecting...</div>
-    <div id="online-players" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);padding:8px;border-radius:8px;font-size:0.9em;max-height:60vh;overflow:auto;min-width:160px">Players:<ul id="players-list" style="margin:6px 0 0 14px;padding:0;list-style:disc"></ul></div>
-    
-    <!-- Firebase Libraries -->
+    <div id="hud">Health: <span id="health-val">100</span></div>
+    <div id="players-panel">Players<ul id="players-list" style="margin:6px 0 0 14px;padding:0;list-style:disc"></ul></div>
+
     <script type="module">
-        // Three.js Imports
-        import * as THREE from 'three';
-        import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-        
-        // Firebase Imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import * as THREE from 'three';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-        // --- GAME SETUP ---
-        let camera, scene, renderer, composer;
-        let world, floor;
-        let player, playerBody;
-        let controls;
-        const players = {}; // To store other players' data and meshes
-        
-        let db, auth, userId;
-        let playerDocRef;
-        let playersCollectionRef;
+    // Minimal, rebuilt single-file version implementing the requested realtime presence
 
-        const clock = new THREE.Clock();
-        const moveDirection = { forward: 0, backward: 0, left: 0, right: 0 };
-        const playerVelocity = new THREE.Vector3();
-        let canJump = false;
-        const playerSpeed = 10;
-        const jumpHeight = 8;
-        const gravity = -25;
-        
-        const spawnPoints = [
-            new THREE.Vector3(-15, 2, -15),
-            new THREE.Vector3(15, 2, 15),
-            new THREE.Vector3(15, 2, -15),
-            new THREE.Vector3(-15, 2, 15),
-        ];
+    // Use fallback config (from your earlier message)
+    const firebaseConfig = {
+        apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
+        authDomain: "fpsmult-5f414.firebaseapp.com",
+        projectId: "fpsmult-5f414",
+        storageBucket: "fpsmult-5f414.firebasestorage.app",
+        messagingSenderId: "353781130843",
+        appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
+    };
 
-        // --- DOM ELEMENTS ---
-        const blocker = document.getElementById('blocker');
-        const instructions = document.getElementById('instructions');
-        const hud = document.getElementById('hud');
-        const hitMarker = document.getElementById('hit-marker');
-        const playerInfoEl = document.getElementById('player-info');
+    // DOM
+    const blocker = document.getElementById('blocker');
+    const playBtn = document.getElementById('play-btn');
+    const playerNameInput = document.getElementById('player-name');
+    const playersListEl = document.getElementById('players-list');
+    const healthValEl = document.getElementById('health-val');
 
-    // --- INITIALIZE ---
-        init();
+    // Three.js basic scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000011);
+    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+    camera.position.y = 1.7;
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-        function init() {
-            // Scene
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000011); // Deep dark blue background
-            scene.fog = new THREE.Fog(0x000011, 40, 100); // Fog to match
+    // Simple player body
+    const playerBody = new THREE.Object3D();
+    playerBody.add(camera);
+    scene.add(playerBody);
 
-            // Camera
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.y = 1.7;
+    // Simple floor
+    const grid = new THREE.GridHelper(100, 100, 0x00ffff, 0x004444);
+    grid.position.y = 0.01;
+    scene.add(grid);
 
-            // Player Body (for collision)
-            const playerGeometry = new THREE.BoxBufferGeometry(0.8, 1.8, 0.8);
-            const playerMaterial = new THREE.MeshBasicMaterial({ visible: false });
-            playerBody = new THREE.Mesh(playerGeometry, playerMaterial);
-            playerBody.add(camera); // Attach camera to the player body
-            scene.add(playerBody);
+    // Movement
+    const move = {f:0,b:0,l:0,r:0};
+    const velocity = new THREE.Vector3();
+    let canJump = false;
+    const clock = new THREE.Clock();
 
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.toneMapping = THREE.ReinhardToneMapping; // Necessary for bloom
-            document.body.appendChild(renderer.domElement);
+    // Game/player state
+    let app, auth, db;
+    let userId = null;
+    let playerDocRef = null;
+    let playersCollectionRef = null;
+    let localPlayer = null;
+    const otherPlayers = {}; // id -> {data,mesh}
 
-            setupPostProcessing();
-            createWorld();
-            setupLights();
-            setupPointerLock();
-            setupEventListeners();
-            
-            // Note: Firebase join is deferred until the user clicks Play so they can enter a name first
-            
-            animate();
+    // Heartbeat interval (ms)
+    const HEARTBEAT_MS = 5000;
+    let heartbeatTimer = null;
+
+    // Helper: create simple mesh for remote players
+    function makePlayerMesh(color){
+        const g = new THREE.CapsuleGeometry(0.4, 0.8, 4, 12);
+        const m = new THREE.MeshBasicMaterial({color,wireframe:true});
+        const mesh = new THREE.Mesh(g,m);
+        return mesh;
+    }
+
+    // Pointer lock wiring
+    document.addEventListener('pointerlockchange', ()=>{
+        const locked = document.pointerLockElement === document.body;
+        blocker.style.display = locked ? 'none' : 'flex';
+        // If pointerlock lost and we have a player, remove them
+        if(!locked && playerDocRef){
+            // remove player doc
+            deletePlayerDoc().catch(()=>{});
         }
+    });
 
-        function createWorld() {
-            world = new THREE.Group();
-            scene.add(world);
+    // Basic controls
+    document.addEventListener('mousemove', (e)=>{
+        if(document.pointerLockElement !== document.body) return;
+        const movementX = e.movementX || 0;
+        const movementY = e.movementY || 0;
+        const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+        euler.y -= movementX * 0.002;
+        euler.x -= movementY * 0.002;
+        euler.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.x));
+        camera.quaternion.setFromEuler(euler);
+    });
 
-            // Tron Grid Floor
-            const gridHelper = new THREE.GridHelper(100, 100, 0x00ffff, 0x004444);
-            gridHelper.position.y = 0.01; // Slightly above the physics plane
-            scene.add(gridHelper);
-
-            // Invisible physical floor plane
-            const floorGeometry = new THREE.PlaneGeometry(100, 100);
-            const floorMaterial = new THREE.MeshBasicMaterial({ visible: false });
-            floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            world.add(floor); // Add to world for ground detection
-            
-            // Walls and Obstacles - now glowing outlines
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
-
-            const boxes = [
-                // Outer walls
-                { s: [100, 4, 2], p: [0, 2, 50] }, { s: [100, 4, 2], p: [0, 2, -50] },
-                { s: [2, 4, 100], p: [50, 2, 0] }, { s: [2, 4, 100], p: [-50, 2, 0] },
-                // Inner obstacles
-                { s: [10, 3, 2], p: [0, 1.5, -10] }, { s: [10, 3, 2], p: [0, 1.5, 10] },
-                { s: [2, 3, 10], p: [-10, 1.5, 0] }, { s: [2, 3, 10], p: [10, 1.5, 0] },
-                { s: [8, 3, 8], p: [20, 1.5, 20] }, { s: [8, 3, 8], p: [-20, 1.5, -20] }
-            ];
-
-            boxes.forEach(b => {
-                const wallGeometry = new THREE.BoxGeometry(b.s[0], b.s[1], b.s[2]);
-                
-                // Invisible collision mesh
-                const wallCollision = new THREE.Mesh(wallGeometry, new THREE.MeshBasicMaterial({ visible: false }));
-                wallCollision.position.set(b.p[0], b.p[1], b.p[2]);
-                world.add(wallCollision);
-
-                // Visible glowing edges
-                const edges = new THREE.EdgesGeometry(wallGeometry);
-                const line = new THREE.LineSegments(edges, lineMaterial);
-                line.position.copy(wallCollision.position);
-                scene.add(line);
-            });
+    document.addEventListener('keydown', (e)=>{
+        if(e.code === 'KeyW') move.f = 1;
+        if(e.code === 'KeyS') move.b = 1;
+        if(e.code === 'KeyA') move.l = 1;
+        if(e.code === 'KeyD') move.r = 1;
+        if(e.code === 'Space' && canJump) { velocity.y = 8; canJump = false; }
+        if(e.code === 'Escape') {
+            // user wants to leave: delete player doc and show blocker
+            deletePlayerDoc().catch(()=>{});
+            document.exitPointerLock && document.exitPointerLock();
+            blocker.style.display = 'flex';
         }
-        
-        function setupLights() {
-            // Minimal lighting for a TRON theme, relying on emissive materials
-            const ambientLight = new THREE.AmbientLight(0x4040ff, 0.5); // A faint blue ambient light
-            scene.add(ambientLight);
+    });
+    document.addEventListener('keyup', (e)=>{
+        if(e.code === 'KeyW') move.f = 0;
+        if(e.code === 'KeyS') move.b = 0;
+        if(e.code === 'KeyA') move.l = 0;
+        if(e.code === 'KeyD') move.r = 0;
+    });
+
+    // Resize
+    addEventListener('resize', ()=>{
+        camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // Render loop
+    function animate(){
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+        // movement
+        const speed = 6;
+        const dir = new THREE.Vector3(move.r-move.l, 0, move.b-move.f).normalize();
+        if(dir.length()>0){
+            const rot = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+            dir.applyAxisAngle(new THREE.Vector3(0,1,0), rot.y);
+            playerBody.position.x += dir.x * speed * dt;
+            playerBody.position.z += dir.z * speed * dt;
         }
+        velocity.y += -25 * dt;
+        playerBody.position.y += velocity.y * dt;
+        if(playerBody.position.y < 0.9){ velocity.y = 0; playerBody.position.y = 0.9; canJump = true; }
 
-        function setupPostProcessing() {
-            const renderScene = new RenderPass(scene, camera);
-            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.2;
-            bloomPass.strength = 1.2;
-            bloomPass.radius = 0.5;
+        // Update local player doc periodically done elsewhere
+        // Render others
+        renderer.render(scene, camera);
+    }
+    animate();
 
-            composer = new EffectComposer(renderer);
-            composer.addPass(renderScene);
-            composer.addPass(bloomPass);
-        }
+    // Firestore helpers
+    async function initFirebaseAndAuth(){
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        // players collection path (same structure as your earlier file)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-fps-app';
+        playersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
 
-    // --- FIREBASE LOGIC ---
-        async function firebaseSetup() {
-            // These globals are provided by the environment.
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-fps-app';
-            // Use user-provided config if globals are not available
-            const firebaseConfig = typeof __firebase_config !== 'undefined' 
-                ? JSON.parse(__firebase_config)
-                : { // Fallback config provided by user
-                    apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
-                    authDomain: "fpsmult-5f414.firebaseapp.com",
-                    projectId: "fpsmult-5f414",
-                    storageBucket: "fpsmult-5f414.firebasestorage.app",
-                    messagingSenderId: "353781130843",
-                    appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
-                };
-
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            
-            playersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
-            
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
+        return new Promise((resolve,reject)=>{
+            onAuthStateChanged(auth, async (user)=>{
+                if(user){
                     userId = user.uid;
-                    playerInfoEl.textContent = `Player ID: ${userId.substring(0,6)}`;
-                    await joinGame();
-                    listenForPlayers();
-                    listenForPlayerHealth();
+                    resolve(user);
                 }
             });
+            // trigger anonymous sign-in
+            signInAnonymously(auth).catch(reject);
+        });
+    }
 
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Authentication failed: ", error);
-                playerInfoEl.textContent = "Authentication Failed";
-            }
-        }
-        
-        async function joinGame() {
-            playerDocRef = doc(db, playersCollectionRef.path, userId);
-            const startPos = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
-            
-            // Use the provided displayName if set on the auth user, otherwise fallback to local input
-            const displayName = (auth.currentUser && auth.currentUser.displayName) || (window.__display_name || 'Anonymous');
+    async function joinGameWithName(displayName){
+        if(!db || !userId) throw new Error('not-initialized');
+        playerDocRef = doc(db, playersCollectionRef.path, userId);
+        const spawn = new THREE.Vector3((Math.random()-0.5)*30, 1, (Math.random()-0.5)*30);
+        localPlayer = {
+            id: userId,
+            name: displayName,
+            position: {x: spawn.x, y: spawn.y, z: spawn.z},
+            rotation: {x:0,y:0,z:0},
+            health: 100,
+            color: '#' + new THREE.Color(Math.random()*0xffffff).getHexString(),
+            lastSeen: serverTimestamp()
+        };
+        // set initial doc
+        await setDoc(playerDocRef, localPlayer);
 
-            player = {
-                id: userId,
-                name: displayName,
-                position: { x: startPos.x, y: startPos.y, z: startPos.z },
-                rotation: { x: 0, y: 0, z: 0 },
-                health: 100,
-                color: `#${new THREE.Color(Math.random() * 0xffffff).getHexString()}`,
-                lastUpdate: serverTimestamp()
-            };
+        // heartbeat every HEARTBEAT_MS
+        heartbeatTimer = setInterval(()=>{
+            if(playerDocRef) updateDoc(playerDocRef, { lastSeen: serverTimestamp(),
+                'position.x': playerBody.position.x, 'position.y': playerBody.position.y, 'position.z': playerBody.position.z
+            }).catch(()=>{});
+        }, HEARTBEAT_MS);
 
-            playerBody.position.copy(startPos);
-            
-            await setDoc(playerDocRef, player);
+        // Listen for health changes on our doc
+        onSnapshot(playerDocRef, (snap)=>{
+            if(!snap.exists()) return;
+            const data = snap.data();
+            if(data.health !== undefined){ healthValEl.textContent = data.health; }
+        });
 
-            // Ensure we remove the player when the window unloads
-            const unloadHandler = async () => {
-                try { await deleteDoc(playerDocRef); } catch (e) { /* ignore */ }
-            };
-            window.addEventListener('beforeunload', unloadHandler);
-
-            // Also remove player when pointer lock is lost via ESC (user leaves)
-            document.addEventListener('pointerlockchange', () => {
-                if (!document.pointerLockElement) {
-                    // Delay a tiny bit to allow intentional re-entry; otherwise remove immediately
-                    setTimeout(async () => {
-                        if (!document.pointerLockElement) {
-                            try { await deleteDoc(playerDocRef); } catch (e) { /* ignore */ }
-                        }
-                    }, 200);
-                }
-            });
-        }
-        
-        function listenForPlayers() {
-            onSnapshot(collection(db, playersCollectionRef.path), (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    const playerData = change.doc.data();
-                    if (playerData.id === userId) return;
-
-                    if (change.type === "added" || change.type === "modified") {
-                        if (!players[playerData.id]) {
-                            // Create new player mesh - TRON style
-                            const geometry = new THREE.CapsuleGeometry(0.5, 1, 4, 16);
-                            const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
-                            const mesh = new THREE.Mesh(geometry, material);
-                            mesh.name = playerData.id; // For raycasting
-                            players[playerData.id] = { data: playerData, mesh: mesh };
-                            scene.add(mesh);
-                        }
-                        
-                        // Update position and rotation
-                        const p = players[playerData.id];
-                        p.data = playerData;
-                        p.mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
-                        p.mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
-                        p.mesh.material.color.set(playerData.color);
-
-                    } else if (change.type === "removed") {
-                        if (players[playerData.id]) {
-                            scene.remove(players[playerData.id].mesh);
-                            delete players[playerData.id];
-                        }
+        // Listen for collection changes
+        onSnapshot(collection(db, playersCollectionRef.path), (snapshot)=>{
+            // Rebuild or patch players
+            snapshot.docChanges().forEach(change=>{
+                const d = change.doc.data();
+                const id = d.id;
+                if(id === userId) return; // skip ourselves
+                if(change.type === 'added' || change.type === 'modified'){
+                    if(!otherPlayers[id]){
+                        const mesh = makePlayerMesh(d.color || '#00ffff');
+                        scene.add(mesh);
+                        otherPlayers[id] = {data:d, mesh};
                     }
-                    // Update online players UI list
-                    updatePlayersListUI();
-                });
+                    const entry = otherPlayers[id];
+                    entry.data = d;
+                    entry.mesh.position.set(d.position.x, d.position.y, d.position.z);
+                    if(d.color) entry.mesh.material.color.set(d.color);
+                } else if(change.type === 'removed'){
+                    if(otherPlayers[id]){ scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; }
+                }
             });
-        }
+            rebuildPlayersListUI();
+        });
+    }
 
-        function updatePlayersListUI() {
-            const listEl = document.getElementById('players-list');
-            if (!listEl) return;
-            // Clear and rebuild
-            listEl.innerHTML = '';
-            // Add self first
-            if (player) {
-                const li = document.createElement('li');
-                li.textContent = `${player.name || 'You'} (you)`;
-                listEl.appendChild(li);
-            }
-            Object.values(players).forEach(p => {
-                const li = document.createElement('li');
-                li.textContent = p.data.name ? `${p.data.name}` : p.data.id.substring(0,6);
-                listEl.appendChild(li);
-            });
+    function rebuildPlayersListUI(){
+        playersListEl.innerHTML = '';
+        if(localPlayer){
+            const li = document.createElement('li'); li.textContent = `${localPlayer.name} (you)`; playersListEl.appendChild(li);
         }
+        Object.values(otherPlayers).forEach(p=>{
+            const li = document.createElement('li'); li.textContent = p.data.name || p.data.id.substring(0,6); playersListEl.appendChild(li);
+        });
+    }
 
-        function listenForPlayerHealth() {
+    async function deletePlayerDoc(){
+        try{
+            if(heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+            if(playerDocRef) await deleteDoc(playerDocRef);
+            playerDocRef = null; localPlayer = null;
+        }catch(e){ console.warn('could not delete player doc', e); }
+    }
+
+    // Play button handler
+    playBtn.addEventListener('click', async ()=>{
+        const name = (playerNameInput.value || '').trim() || `Player-${Math.floor(Math.random()*9000)+1000}`;
+        try{
+            blocker.querySelector('h2').textContent = 'Connecting...';
+            await initFirebaseAndAuth();
+            await joinGameWithName(name);
+            // sync initial position
+            playerBody.position.set(localPlayer.position.x, localPlayer.position.y, localPlayer.position.z);
+            // request pointer lock
+            document.body.requestPointerLock && document.body.requestPointerLock();
+        }catch(e){
+            console.error(e);
+            blocker.querySelector('h2').textContent = 'Connection failed';
+        }
+    });
+
+    // Remove player on page unload
+    window.addEventListener('beforeunload', ()=>{
+        // best-effort synchronous delete is not possible; but we try to fire the async delete
+        if(playerDocRef){ deletePlayerDoc().catch(()=>{}); }
+    });
+
+    // Optional: tidy up stale players on load (client-side); we can't delete other docs without permission
+    // Recommend adding a server-side cleanup to remove docs where lastSeen is older than X.
+
+    </script>
+</body>
+</html>
              onSnapshot(playerDocRef, (doc) => {
                 if(doc.exists()){
                     const data = doc.data();
