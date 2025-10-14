@@ -313,10 +313,15 @@
                     userId = user.uid;
                     playerInfoEl.textContent = `Player ID: ${userId.substring(0,6)}`;
 
+                    // Start listening for other players immediately so authenticated clients
+                    // receive realtime updates even before the local player joins.
+                    try {
+                        listenForPlayers();
+                    } catch (e) { console.warn('listenForPlayers failed to start', e); }
+
                     // Only auto-join if the player has already chosen a nickname and clicked Play
                     if (window.__chosen_nickname) {
                         await joinGame();
-                        listenForPlayers();
                         listenForPlayerHealth();
                     }
                 }
@@ -360,13 +365,16 @@
             playerBody.position.copy(startPos);
 
             await setDoc(playerDocRef, player);
+            console.log('Player document created/updated for', userId, player);
 
             // Heartbeat: periodically update lastSeen so others know we're alive
             if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
             heartbeatIntervalId = setInterval(() => {
                 if (playerDocRef) {
-                    updateDoc(playerDocRef, { lastSeen: serverTimestamp() }).catch(() => {});
-                }
+                        updateDoc(playerDocRef, { lastSeen: serverTimestamp() }).then(() => {
+                            // heartbeat written
+                        }).catch((e) => { console.warn('heartbeat write failed', e); });
+                    }
             }, HEARTBEAT_MS);
 
             // Clean up on unload
@@ -398,6 +406,7 @@
         function listenForPlayers() {
             // Listen to the players collection for added/modified/removed players
             onSnapshot(playersCollectionRef, (snapshot) => {
+                console.log('players collection snapshot received, changes:', snapshot.docChanges().length);
                 snapshot.docChanges().forEach((change) => {
                     const playerData = change.doc.data();
                     // Remove stale players if we detect lastSeen > TTL (best-effort)
@@ -490,6 +499,8 @@
                         "rotation.y": currentRotation.y,
                         "rotation.z": 0,
                         "lastUpdate": serverTimestamp()
+                    }).then(() => {
+                        // optional success log
                     }).catch(err => console.error("Error updating player:", err));
                 }
                 lastUpdateTime = Date.now();
@@ -659,6 +670,7 @@
             const newHealth = Math.max(0, targetPlayer.health - 20);
             
             await updateDoc(targetRef, { health: newHealth });
+            console.log(`Updated health for ${targetId} -> ${newHealth}`);
             
             // Visual feedback for hitting an enemy
             hitMarker.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
@@ -679,6 +691,7 @@
                     "position.y": spawnPoint.y,
                     "position.z": spawnPoint.z
                 });
+                console.log('Respawn updated player doc for', userId);
             }
         }
 
