@@ -93,12 +93,11 @@
     <!-- Firebase Libraries -->
     <script type="module">
         // Three.js Imports
-    import * as THREE from 'three';
-    import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-    import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-    import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-    // CapsuleGeometry is provided as an examples export (not on the THREE namespace for module builds)
-    import { CapsuleGeometry } from 'three/examples/jsm/geometries/CapsuleGeometry.js';
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { CapsuleGeometry } from 'three/examples/jsm/geometries/CapsuleGeometry.js';
         
         // Firebase Imports (modular SDK)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -106,15 +105,13 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- FIREBASE CONFIG ---
-        // Replace the placeholder values below with your project's actual Firebase configuration object.
-        // You can find this in your Firebase project settings under "General".
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", // <-- PASTE YOURS HERE
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // <-- PASTE YOURS HERE
-            projectId: "YOUR_PROJECT_ID", // <-- PASTE YOURS HERE
-            storageBucket: "YOUR_PROJECT_ID.appspot.com", // <-- PASTE YOURS HERE
-            messagingSenderId: "YOUR_SENDER_ID", // <-- PASTE YOURS HERE
-            appId: "YOUR_APP_ID" // <-- PASTE YOURS HERE
+            apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
+            authDomain: "fpsmult-5f414.firebaseapp.com",
+            projectId: "fpsmult-5f414",
+            storageBucket: "fpsmult-5f414.appspot.com",
+            messagingSenderId: "353781130843",
+            appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
         };
         const appId = 'default-fps-app'; // This is a namespace for the app's data
 
@@ -379,8 +376,8 @@
                     // Ignore updates for the local player
                     if (playerData.id === userId) return;
 
-                    // Remove stale players
-                    if (playerData.lastSeen) {
+                    // Remove stale players - ADDED a check for `toMillis` function to prevent crash
+                    if (playerData.lastSeen && typeof playerData.lastSeen.toMillis === 'function') {
                         const lastSeenMillis = playerData.lastSeen.toMillis();
                         if (Date.now() - lastSeenMillis > STALE_TTL_MS) {
                             if (players[playerData.id]) {
@@ -396,7 +393,6 @@
                     if (change.type === "added" || change.type === "modified") {
                         if (!players[playerData.id]) {
                             // --- Player Added ---
-                            // Use the imported CapsuleGeometry class (examples module)
                             const geometry = new CapsuleGeometry(0.5, 1, 4, 16);
                             const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
                             const mesh = new THREE.Mesh(geometry, material);
