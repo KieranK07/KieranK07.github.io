@@ -28,8 +28,9 @@
         }
         #instructions {
             width: 50%;
+            max-width: 500px;
             text-align: center;
-            cursor: pointer;
+            cursor: default;
             padding: 20px;
             background: rgba(20,20,20,0.8);
             border-radius: 12px;
@@ -53,25 +54,6 @@
             background-color: rgba(255, 255, 255, 0.7);
             transform: translate(-50%, -50%);
             pointer-events: none;
-        }
-        #hud {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background-color: rgba(0,0,0,0.5);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 1.2em;
-        }
-        #hit-marker {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 0, 0, 0);
-            pointer-events: none;
-            transition: background-color 0.1s ease-out;
         }
         #player-info {
             position: absolute;
@@ -102,12 +84,10 @@
                 <button id="play-button" style="padding:8px 12px; margin-left:8px; font-size:1em; border-radius:6px; border:1px solid #2ee; background:#003; color:#0ff; cursor:pointer;">Play</button>
             </div>
             <p><strong>Controls:</strong></p>
-            <p>WASD to move | SPACE to jump | MOUSE to look | CLICK to shoot</p>
+            <p>WASD to move | SPACE to jump | MOUSE to look</p>
         </div>
     </div>
     <div id="crosshair"></div>
-    <div id="hud">Health: 100</div>
-    <div id="hit-marker"></div>
     <div id="player-info">Connecting...</div>
     
     <!-- Firebase Libraries -->
@@ -118,32 +98,28 @@
         import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
         
-                // Firebase Imports (modular SDK v10)
-                import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-                import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-                import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        // Firebase Imports (modular SDK)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-                // Firebase configuration (user-provided)
-                // You can still override at runtime by setting window.__firebase_config before this module runs.
-                const firebaseConfig = window.__firebase_config ?? {
-                    apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
-                    authDomain: "fpsmult-5f414.firebaseapp.com",
-                    projectId: "fpsmult-5f414",
-                    storageBucket: "fpsmult-5f414.firebasestorage.app",
-                    messagingSenderId: "353781130843",
-                    appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
-                };
+        // --- DYNAMIC FIREBASE CONFIG ---
+        // These variables are injected by the environment.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT_ID.firebaseapp.com", projectId: "YOUR_PROJECT_ID" }; // Fallback for local dev
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-fps-app';
+
 
         // --- GAME SETUP ---
         let camera, scene, renderer, composer;
         let world, floor;
-        let player, playerBody;
-        let controls;
+        let playerBody;
         const players = {}; // To store other players' data and meshes
         
-    let db, auth, userId;
-    let playerDocRef;
-    let playersCollectionRef; // Firestore CollectionReference
+		let db, auth, userId;
+		let playerDocRef;
+		let playersCollectionRef; // Firestore CollectionReference
 
         const clock = new THREE.Clock();
         const moveDirection = { forward: 0, backward: 0, left: 0, right: 0 };
@@ -163,11 +139,9 @@
     // --- DOM ELEMENTS ---
         const blocker = document.getElementById('blocker');
         const instructions = document.getElementById('instructions');
-        const hud = document.getElementById('hud');
-        const hitMarker = document.getElementById('hit-marker');
         const playerInfoEl = document.getElementById('player-info');
-    const nicknameInput = document.getElementById('nickname-input');
-    const playButton = document.getElementById('play-button');
+		const nicknameInput = document.getElementById('nickname-input');
+		const playButton = document.getElementById('play-button');
 
         // --- INITIALIZE ---
         init();
@@ -222,8 +196,6 @@
                 // If already authenticated + userId present, join immediately
                 if (auth && auth.currentUser && userId) {
                     await joinGame();
-                    listenForPlayers();
-                    listenForPlayerHealth();
                 }
             });
 
@@ -295,9 +267,6 @@
 
         // --- FIREBASE LOGIC ---
         async function firebaseSetup() {
-            // Application/namespace id used for multi-tenant storage within the project
-            const appId = window.__app_id ?? 'default-fps-app';
-
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
@@ -305,32 +274,25 @@
             // Players collection path: /artifacts/{appId}/public/data/players
             playersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
 
-            // Make debug handles accessible from console
-            window._firebase = { app, db, auth };
-
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
-                    playerInfoEl.textContent = `Player ID: ${userId.substring(0,6)}`;
+                    playerInfoEl.textContent = `Player ID: ${userId}`;
 
-                    // Start listening for other players immediately so authenticated clients
-                    // receive realtime updates even before the local player joins.
-                    try {
-                        listenForPlayers();
-                    } catch (e) { console.warn('listenForPlayers failed to start', e); }
+                    // Start listening for other players immediately
+                    listenForPlayers();
 
                     // Only auto-join if the player has already chosen a nickname and clicked Play
                     if (window.__chosen_nickname) {
                         await joinGame();
-                        listenForPlayerHealth();
                     }
                 }
             });
 
             try {
                 // If a custom token was provided at runtime, use it; otherwise sign in anonymously
-                if (window.__initial_auth_token) {
-                    await signInWithCustomToken(auth, window.__initial_auth_token);
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
@@ -345,18 +307,18 @@
         const STALE_TTL_MS = 30_000; // consider a player stale if not seen for 30s
 
         async function joinGame() {
+            if (!userId) return;
             // Create a DocumentReference under the players collection with the user's uid
             playerDocRef = doc(playersCollectionRef, userId);
+            
             const startPos = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
-
             const nickname = window.__chosen_nickname ?? `anon-${userId.substring(0,6)}`;
 
-            player = {
+            const initialPlayerData = {
                 id: userId,
                 nickname: nickname,
                 position: { x: startPos.x, y: startPos.y, z: startPos.z },
                 rotation: { x: 0, y: 0, z: 0 },
-                health: 100,
                 color: `#${new THREE.Color(Math.random() * 0xffffff).getHexString()}`,
                 lastUpdate: serverTimestamp(),
                 lastSeen: serverTimestamp()
@@ -364,17 +326,15 @@
 
             playerBody.position.copy(startPos);
 
-            await setDoc(playerDocRef, player);
-            console.log('Player document created/updated for', userId, player);
+            await setDoc(playerDocRef, initialPlayerData);
+            console.log('Player document created/updated for', userId, initialPlayerData);
 
             // Heartbeat: periodically update lastSeen so others know we're alive
             if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
             heartbeatIntervalId = setInterval(() => {
                 if (playerDocRef) {
-                        updateDoc(playerDocRef, { lastSeen: serverTimestamp() }).then(() => {
-                            // heartbeat written
-                        }).catch((e) => { console.warn('heartbeat write failed', e); });
-                    }
+                    updateDoc(playerDocRef, { lastSeen: serverTimestamp() }).catch((e) => { console.warn('heartbeat write failed', e); });
+                }
             }, HEARTBEAT_MS);
 
             // Clean up on unload
@@ -406,110 +366,86 @@
         function listenForPlayers() {
             // Listen to the players collection for added/modified/removed players
             onSnapshot(playersCollectionRef, (snapshot) => {
-                console.log('players collection snapshot received, changes:', snapshot.docChanges().length);
                 snapshot.docChanges().forEach((change) => {
                     const playerData = change.doc.data();
-                    // Remove stale players if we detect lastSeen > TTL (best-effort)
-                    if (playerData.lastSeen && playerData.id !== userId) {
-                        const lastSeenMillis = playerData.lastSeen?.toMillis ? playerData.lastSeen.toMillis() : (new Date(playerData.lastSeen).getTime());
-                        if (lastSeenMillis && Date.now() - lastSeenMillis > STALE_TTL_MS) {
-                            // Remove stale from scene and attempt to delete doc
+                    // Ignore updates for the local player
+                    if (playerData.id === userId) return;
+
+                    // Remove stale players
+                    if (playerData.lastSeen) {
+                        const lastSeenMillis = playerData.lastSeen.toMillis();
+                        if (Date.now() - lastSeenMillis > STALE_TTL_MS) {
                             if (players[playerData.id]) {
                                 scene.remove(players[playerData.id].mesh);
-                                if (players[playerData.id].nameSprite) scene.remove(players[playerData.id].nameSprite);
                                 delete players[playerData.id];
                             }
+                            // Any client can clean up stale docs
                             try { deleteDoc(doc(playersCollectionRef, playerData.id)); } catch (e) { /* best-effort */ }
                             return;
                         }
                     }
 
-                    if (playerData.id === userId) return;
-
                     if (change.type === "added" || change.type === "modified") {
                         if (!players[playerData.id]) {
-                            // Create new player mesh - TRON style
+                            // --- Player Added ---
                             const geometry = new THREE.CapsuleGeometry(0.5, 1, 4, 16);
                             const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
                             const mesh = new THREE.Mesh(geometry, material);
-                            mesh.name = playerData.id; // For raycasting
 
-                            // Name sprite above the player
                             const nameSprite = createNameSprite(playerData.nickname || 'anon', playerData.color || '#0ff');
-                            nameSprite.position.set(0, 2.2, 0);
+                            nameSprite.position.set(0, 1.8, 0); 
                             mesh.add(nameSprite);
+                            
+                            // Set initial position and rotation directly
+                            mesh.position.set(playerData.position.x, playerData.position.y - 0.9, playerData.position.z);
+                            mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
 
-                            players[playerData.id] = { data: playerData, mesh: mesh, nameSprite };
+                            players[playerData.id] = { 
+                                data: playerData, 
+                                mesh: mesh,
+                                // interpolation targets
+                                targetPosition: new THREE.Vector3().copy(mesh.position),
+                                targetQuaternion: new THREE.Quaternion().copy(mesh.quaternion)
+                            };
                             scene.add(mesh);
-                        }
-                        
-                        // Update position and rotation
-                        const p = players[playerData.id];
-                        p.data = playerData;
-                        p.mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
-                        p.mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
-                        p.mesh.material.color.set(playerData.color);
-
-                        // Update name if changed
-                        if (p.nameSprite && playerData.nickname) {
-                            // Recreate sprite texture when nickname changes (simple approach)
-                            scene.remove(p.nameSprite);
-                            const newSprite = createNameSprite(playerData.nickname, playerData.color);
-                            newSprite.position.set(0, 2.2, 0);
-                            p.mesh.add(newSprite);
-                            p.nameSprite = newSprite;
+                        } else {
+                            // --- Player Modified ---
+                            const p = players[playerData.id];
+                            p.data = playerData;
+                            // Update interpolation targets instead of setting position directly
+                            p.targetPosition.set(playerData.position.x, playerData.position.y - 0.9, playerData.position.z);
+                            const targetEuler = new THREE.Euler(0, playerData.rotation.y, 0, 'YXZ');
+                            p.targetQuaternion.setFromEuler(targetEuler);
+                            
+                            // Update color immediately
+                            p.mesh.material.color.set(playerData.color);
                         }
 
                     } else if (change.type === "removed") {
                         if (players[playerData.id]) {
                             scene.remove(players[playerData.id].mesh);
-                            if (players[playerData.id].nameSprite) scene.remove(players[playerData.id].nameSprite);
                             delete players[playerData.id];
                         }
                     }
                 });
             });
         }
-
-        function listenForPlayerHealth() {
-             onSnapshot(playerDocRef, (doc) => {
-                if(doc.exists()){
-                    const data = doc.data();
-                    player.health = data.health;
-                    hud.textContent = `Health: ${player.health}`;
-                    if(player.health <= 0) {
-                        respawn();
-                    }
-                }
-            });
-        }
         
-        let lastUpdateTime = 0;
-        const updateInterval = 100; // ms
-
         function updatePlayerOnFirebase() {
-            if (Date.now() - lastUpdateTime > updateInterval) {
-                 if (playerDocRef) {
-                    const currentRotation = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-                    updateDoc(playerDocRef, {
-                        "position.x": playerBody.position.x,
-                        "position.y": playerBody.position.y,
-                        "position.z": playerBody.position.z,
-                        "rotation.x": 0, // We only care about Y-axis rotation for the body
-                        "rotation.y": currentRotation.y,
-                        "rotation.z": 0,
-                        "lastUpdate": serverTimestamp()
-                    }).then(() => {
-                        // optional success log
-                    }).catch(err => console.error("Error updating player:", err));
-                }
-                lastUpdateTime = Date.now();
-            }
+             if (playerDocRef) {
+                 const currentRotation = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+                 updateDoc(playerDocRef, {
+                     "position.x": playerBody.position.x,
+                     "position.y": playerBody.position.y,
+                     "position.z": playerBody.position.z,
+                     "rotation.y": currentRotation.y,
+                     "lastUpdate": serverTimestamp()
+                 }).catch(err => console.error("Error updating player:", err));
+             }
         }
         
         // --- CONTROLS & MOVEMENT ---
         function setupPointerLock() {
-            // Pointer lock is requested only when the user explicitly presses Play.
             document.addEventListener('pointerlockchange', () => {
                 blocker.style.display = document.pointerLockElement ? 'none' : 'flex';
             });
@@ -519,7 +455,6 @@
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
-            document.addEventListener('mousedown', onMouseDown);
             window.addEventListener('resize', onWindowResize);
         }
 
@@ -596,31 +531,30 @@
                     const intersection = playerBox.clone().intersect(worldBox);
                     const size = intersection.getSize(new THREE.Vector3());
                     const center = intersection.getCenter(new THREE.Vector3());
-
                     const playerCenter = playerBox.getCenter(new THREE.Vector3());
 
-                    // Determine overlap direction and correct position by finding the minimum penetration axis
-                    if (size.y < size.x && size.y < size.z) { // Vertical collision is the shallowest
-                        if (playerCenter.y > center.y) { // Hitting from above (landing)
+                    // Determine overlap direction and correct position
+                    if (size.y < size.x && size.y < size.z) { // Vertical collision
+                        if (playerCenter.y > center.y) { // Landing
                            playerBody.position.y += size.y;
                            playerVelocity.y = 0;
                            onGround = true;
-                        } else { // Hitting from below (bumping head)
-                            playerBody.position.y -= size.y;
-                            playerVelocity.y *= -0.5;
+                        } else { // Bumping head
+                             playerBody.position.y -= size.y;
+                             playerVelocity.y *= -0.5;
                         }
-                    } else if (size.x < size.z) { // Horizontal X collision is shallower
+                    } else if (size.x < size.z) { // Horizontal X collision
                         if (playerCenter.x > center.x) {
-                            playerBody.position.x += size.x;
+                             playerBody.position.x += size.x;
                         } else {
-                            playerBody.position.x -= size.x;
+                             playerBody.position.x -= size.x;
                         }
-                    } else { // Horizontal Z collision is shallower
+                    } else { // Horizontal Z collision
                          if (playerCenter.z > center.z) {
-                            playerBody.position.z += size.z;
-                        } else {
-                            playerBody.position.z -= size.z;
-                        }
+                             playerBody.position.z += size.z;
+                         } else {
+                             playerBody.position.z -= size.z;
+                         }
                     }
                 }
             });
@@ -634,67 +568,6 @@
             canJump = onGround;
         }
 
-        // --- GAME LOGIC ---
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2(0, 0); // Center of the screen
-
-        function onMouseDown(event) {
-            if (document.pointerLockElement) {
-                shoot();
-            }
-        }
-
-        function shoot() {
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(scene.children, true);
-            
-            for (let i = 0; i < intersects.length; i++) {
-                let obj = intersects[i].object;
-                 // Traverse up to find the parent player mesh if we hit a child
-                while(obj.parent && !obj.name) {
-                    obj = obj.parent;
-                }
-                
-                if (obj.name && players[obj.name]) {
-                    const targetId = obj.name;
-                    handleHit(targetId);
-                    break;
-                }
-            }
-        }
-        
-        async function handleHit(targetId) {
-            console.log(`Hit player ${targetId}`);
-            const targetRef = doc(playersCollectionRef, targetId);
-            const targetPlayer = players[targetId].data;
-            const newHealth = Math.max(0, targetPlayer.health - 20);
-            
-            await updateDoc(targetRef, { health: newHealth });
-            console.log(`Updated health for ${targetId} -> ${newHealth}`);
-            
-            // Visual feedback for hitting an enemy
-            hitMarker.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-            setTimeout(() => {
-                hitMarker.style.backgroundColor = 'rgba(255, 255, 255, 0)';
-            }, 100);
-        }
-
-        async function respawn() {
-            const spawnPoint = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
-            playerBody.position.copy(spawnPoint);
-            playerVelocity.set(0,0,0);
-            
-            if (playerDocRef) {
-                await updateDoc(playerDocRef, {
-                    health: 100,
-                    "position.x": spawnPoint.x,
-                    "position.y": spawnPoint.y,
-                    "position.z": spawnPoint.z
-                });
-                console.log('Respawn updated player doc for', userId);
-            }
-        }
-
         // --- WINDOW & RENDER LOOP ---
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -706,10 +579,20 @@
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
+            const interpolationFactor = Math.min(delta * 15, 1.0); // Frame-rate independent lerp factor
 
             if (document.pointerLockElement) {
                 updateMovement(delta);
                 updatePlayerOnFirebase();
+            }
+
+            // --- Interpolate other players ---
+            for (const id in players) {
+                const player = players[id];
+                if (player.mesh) {
+                    player.mesh.position.lerp(player.targetPosition, interpolationFactor);
+                    player.mesh.quaternion.slerp(player.targetQuaternion, interpolationFactor);
+                }
             }
 
             composer.render();
@@ -717,5 +600,4 @@
     </script>
 </body>
 </html>
-
 
