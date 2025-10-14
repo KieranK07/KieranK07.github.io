@@ -1,593 +1,599 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Synthwave Arena | Gemini FPS</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<script type="importmap">
-{
-    "imports": {
-        "three": "https://cdn.skypack.dev/three@0.138.0",
-        "cannon-es": "https://cdn.skypack.dev/cannon-es@0.19.0",
-        "three/addons/": "https://cdn.skypack.dev/three@0.138.0/examples/jsm/"
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer FPS Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #111;
+            color: white;
+        }
+        canvas {
+            display: block;
+        }
+        #blocker {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #instructions {
+            width: 50%;
+            text-align: center;
+            cursor: pointer;
+            padding: 20px;
+            background: rgba(20,20,20,0.8);
+            border-radius: 12px;
+            border: 1px solid #444;
+        }
+        #instructions h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+        }
+        #instructions p {
+            font-size: 1.2em;
+            line-height: 1.5;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.7);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 1.2em;
+        }
+        #hit-marker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            transition: background-color 0.1s ease-out;
+        }
+        #player-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+    <!-- Import Map to resolve module specifiers -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+        }
     }
-}
-</script>
-
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-
-<style>
-    body, html { margin: 0; height: 100%; overflow: hidden; background: #000; color: #f0f0f0; font-family: 'Courier New', Courier, monospace; }
-    #game-container { position: absolute; inset: 0; cursor: crosshair; }
-    #ui-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    #crosshair { width: 2px; height: 20px; background: #00ffff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-    #crosshair::before { content: ''; display: block; width: 20px; height: 2px; background: #00ffff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-    #hud { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); padding: 1rem 2rem; border: 1px solid #00ffff; border-radius: 8px; pointer-events: auto; display: flex; gap: 2rem; align-items: center; }
-    #health-bar-container { width: 200px; height: 20px; background: #ff005580; border: 1px solid #ff0055; }
-    #health-bar { width: 100%; height: 100%; background: #00ff99; transition: width 0.2s ease-out; }
-    #login-screen { background: rgba(10, 0, 20, 0.9); border: 2px solid #ff00ff; padding: 3rem; text-align: center; box-shadow: 0 0 30px #ff00ff; pointer-events: all; }
-    .name-input { background: #1a0033; border: 1px solid #ff00ff; color: #e0e0e0; padding: 0.5rem 1rem; text-align: center; margin-bottom: 1.5rem; }
-    .start-button { padding: 0.75rem 2rem; background: #ff00ff; color: #000; font-weight: bold; border: none; cursor: pointer; transition: all 0.2s; }
-    .start-button:hover { background: #fff; box-shadow: 0 0 15px #ff00ff; }
-    .start-button:disabled { background: #555; cursor: not-allowed; }
-    #status-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, 80px); background: rgba(0,0,0,0.7); padding: 1rem; border: 1px solid #ff0055; display: none; }
-</style>
+    </script>
 </head>
 <body>
-    <div id="game-container"></div>
-    <div id="ui-overlay">
-        <div id="crosshair" style="display: none;"></div>
-        <div id="status-message"></div>
-
-        <div id="login-screen">
-            <h1 class="text-3xl mb-4 font-bold" style="color: #00ffff;">GEMINI FPS ARENA</h1>
-            <p class="text-gray-400 mb-6">Enter Callsign</p>
-            <input type="text" id="name-input" class="name-input" placeholder="PLAYER" maxlength="12">
-            <br>
-            <button id="start-button" class="start-button">INITIALIZE CONNECTION</button>
-            <p id="auth-status" class="text-xs mt-4 text-purple-400">Awaiting Initialization...</p>
-        </div>
-
-        <div id="hud" style="display: none;">
-            <div>
-                <span class="font-bold text-cyan-300">HP</span>
-                <div id="health-bar-container"><div id="health-bar"></div></div>
-            </div>
-            <div id="player-list" class="text-xs"></div>
+    <div id="blocker">
+        <div id="instructions">
+            <h1>Simple FPS</h1>
+            <p>Click to Play</p>
+            <p><strong>Controls:</strong></p>
+            <p>WASD to move | SPACE to jump | MOUSE to look | CLICK to shoot</p>
         </div>
     </div>
-
-<script type="module">
-// --- IMPORTS ---
-import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
-// --- FIREBASE CONFIG ---
-const firebaseConfig = {
-    apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
-    authDomain: "fpsmult-5f414.firebaseapp.com",
-    projectId: "fpsmult-5f414",
-    storageBucket: "fpsmult-5f414.firebasestorage.app",
-    messagingSenderId: "353781130843",
-    appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-const gameCollectionRef = db.collection('gemini_fps_players');
-
-// --- CONSTANTS & CONFIG ---
-const MOVE_SPEED = 20;
-const JUMP_FORCE = 20;
-const MAX_HEALTH = 100;
-const RESPAWN_TIME = 3000; // ms
-const PLAYER_SYNC_RATE = 100; // ms
-const PLAYER_HALF_HEIGHT = 1.0;
-const SPAWN_POINTS = [
-    new THREE.Vector3(0, 5, 40),
-    new THREE.Vector3(40, 5, 0),
-    new THREE.Vector3(0, 5, -40),
-    new THREE.Vector3(-40, 5, 0),
-];
-
-// --- GLOBAL STATE ---
-let scene, camera, renderer, composer, world, clock;
-let localPlayer, playerDocRef;
-const otherPlayers = new Map();
-const keyState = {};
-let isPointerLocked = false;
-let lastSyncTime = 0;
-const tracers = [];
-
-// --- DOM ELEMENTS ---
-const gameContainer = document.getElementById('game-container');
-const loginScreen = document.getElementById('login-screen');
-const startButton = document.getElementById('start-button');
-const nameInput = document.getElementById('name-input');
-const authStatus = document.getElementById('auth-status');
-const crosshair = document.getElementById('crosshair');
-const hud = document.getElementById('hud');
-const healthBar = document.getElementById('health-bar');
-const playerList = document.getElementById('player-list');
-const statusMessage = document.getElementById('status-message');
-
-
-// --- SCENE & PHYSICS SETUP ---
-function init() {
-    // Scene & Camera
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0014);
-    scene.fog = new THREE.Fog(0x0a0014, 50, 200);
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    <div id="crosshair"></div>
+    <div id="hud">Health: 100</div>
+    <div id="hit-marker"></div>
+    <div id="player-info">Connecting...</div>
     
-    // Renderer & Post-processing (for the glow effect)
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    gameContainer.appendChild(renderer.domElement);
-    
-    const renderPass = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-    bloomPass.threshold = 0;
-    bloomPass.strength = 1.2;
-    bloomPass.radius = 0.5;
-
-    composer = new EffectComposer(renderer);
-    composer.addPass(renderPass);
-    composer.addPass(bloomPass);
-
-    // Physics World
-    world = new CANNON.World({ gravity: new CANNON.Vec3(0, -50, 0) });
-
-    // Lighting
-    const hemiLight = new THREE.HemisphereLight(0xff00ff, 0x00ffff, 0.6);
-    scene.add(hemiLight);
-
-    // Arena
-    createArena();
-}
-
-function createArena() {
-    const groundMaterial = new CANNON.Material('ground');
-    
-    // Floor
-    const floorGeo = new THREE.PlaneGeometry(120, 120);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a0033 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
-    const floorBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMaterial });
-    floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-    world.addBody(floorBody);
-    
-    // Walls and structures
-    const wallMaterial = new CANNON.Material('wall');
-    const boxGeo = new THREE.BoxGeometry(1,1,1);
-    const wallDefs = [
-        { s: [120, 20, 2], p: [0, 10, 61] }, { s: [120, 20, 2], p: [0, 10, -61] },
-        { s: [2, 20, 120], p: [61, 10, 0] }, { s: [2, 20, 120], p: [-61, 10, 0] },
-        { s: [20, 8, 20], p: [0, 4, 0] }, { s: [10, 6, 30], p: [-35, 3, -20] },
-        { s: [10, 6, 30], p: [35, 3, 20] }, { s: [20, 4, 10], p: [0, 2, 30] },
-    ];
-
-    wallDefs.forEach(def => {
-        const mat = new THREE.MeshStandardMaterial({ color: 0x330066, emissive: 0xff00ff, emissiveIntensity: 0.2 });
-        const mesh = new THREE.Mesh(boxGeo, mat);
-        mesh.scale.set(...def.s);
-        mesh.position.set(...def.p);
-        scene.add(mesh);
+    <!-- Firebase Libraries -->
+    <script type="module">
+        // Three.js Imports
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
         
-        const body = new CANNON.Body({
-            mass: 0,
-            shape: new CANNON.Box(new CANNON.Vec3(def.s[0]/2, def.s[1]/2, def.s[2]/2)),
-            position: new CANNON.Vec3(...def.p),
-            material: wallMaterial
-        });
-        world.addBody(body);
-    });
-}
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- PLAYER & CONTROLS ---
-function setupLocalPlayer(id, name) {
-    const playerMaterial = new CANNON.Material('player');
-    const playerBody = new CANNON.Body({
-        mass: 80,
-        shape: new CANNON.Box(new CANNON.Vec3(0.5, PLAYER_HALF_HEIGHT, 0.5)),
-        position: new CANNON.Vec3(0, 5, 0),
-        fixedRotation: true,
-        material: playerMaterial
-    });
-    world.addBody(playerBody);
+        // --- GAME SETUP ---
+        let camera, scene, renderer, composer;
+        let world, floor;
+        let player, playerBody;
+        let controls;
+        const players = {}; // To store other players' data and meshes
+        
+        let db, auth, userId;
+        let playerDocRef;
+        let playersCollectionRef;
 
-    // Prevent player from sticking to walls
-    const playerWallContact = new CANNON.ContactMaterial(playerMaterial, new CANNON.Material('wall'), {
-        friction: 0.0,
-        restitution: 0.1
-    });
-    world.addContactMaterial(playerWallContact);
+        const clock = new THREE.Clock();
+        const moveDirection = { forward: 0, backward: 0, left: 0, right: 0 };
+        const playerVelocity = new THREE.Vector3();
+        let canJump = false;
+        const playerSpeed = 10;
+        const jumpHeight = 8;
+        const gravity = -25;
+        
+        const spawnPoints = [
+            new THREE.Vector3(-15, 2, -15),
+            new THREE.Vector3(15, 2, 15),
+            new THREE.Vector3(15, 2, -15),
+            new THREE.Vector3(-15, 2, 15),
+        ];
 
-    // Player visual representation (not visible to self)
-    const playerMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1, PLAYER_HALF_HEIGHT * 2, 1),
-        new THREE.MeshStandardMaterial({ color: 0x00ffff })
-    );
-    playerMesh.visible = false;
-    scene.add(playerMesh);
+        // --- DOM ELEMENTS ---
+        const blocker = document.getElementById('blocker');
+        const instructions = document.getElementById('instructions');
+        const hud = document.getElementById('hud');
+        const hitMarker = document.getElementById('hit-marker');
+        const playerInfoEl = document.getElementById('player-info');
 
-    localPlayer = {
-        id,
-        name,
-        mesh: playerMesh,
-        body: playerBody,
-        health: MAX_HEALTH,
-        isDead: false,
-        input: new THREE.Vector3(),
-        // Camera is attached to a separate object for pitch control
-        cameraHolder: new THREE.Object3D(),
-    };
-    
-    localPlayer.cameraHolder.add(camera);
-    scene.add(localPlayer.cameraHolder);
-    
-    respawn(); // Initial spawn
-}
+        // --- INITIALIZE ---
+        init();
 
-function setupControls() {
-    document.addEventListener('mousemove', e => {
-        if (!isPointerLocked) return;
-        localPlayer.cameraHolder.rotation.y -= e.movementX * 0.002;
-        camera.rotation.x -= e.movementY * 0.002;
-        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
-    });
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011); // Deep dark blue background
+            scene.fog = new THREE.Fog(0x000011, 40, 100); // Fog to match
 
-    document.addEventListener('keydown', e => keyState[e.code] = true);
-    document.addEventListener('keyup', e => keyState[e.code] = false);
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.y = 1.7;
 
-    document.addEventListener('mousedown', () => {
-        if (isPointerLocked && !localPlayer.isDead) shoot();
-    });
+            // Player Body (for collision)
+            const playerGeometry = new THREE.BoxBufferGeometry(0.8, 1.8, 0.8);
+            const playerMaterial = new THREE.MeshBasicMaterial({ visible: false });
+            playerBody = new THREE.Mesh(playerGeometry, playerMaterial);
+            playerBody.add(camera); // Attach camera to the player body
+            scene.add(playerBody);
 
-    document.addEventListener('pointerlockchange', () => {
-        isPointerLocked = document.pointerLockElement === gameContainer;
-        if (!isPointerLocked) location.reload(); // Simple exit logic
-    });
-}
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ReinhardToneMapping; // Necessary for bloom
+            document.body.appendChild(renderer.domElement);
 
-function updatePlayerMovement(delta) {
-    if (!localPlayer || localPlayer.isDead) return;
-
-    localPlayer.input.set(0, 0, 0);
-    if (keyState['KeyW']) localPlayer.input.z = -1;
-    if (keyState['KeyS']) localPlayer.input.z = 1;
-    if (keyState['KeyA']) localPlayer.input.x = -1;
-    if (keyState['KeyD']) localPlayer.input.x = 1;
-
-    // Apply movement relative to camera direction
-    const moveDirection = localPlayer.input.normalize().multiplyScalar(MOVE_SPEED);
-    const euler = new THREE.Euler(0, localPlayer.cameraHolder.rotation.y, 0, 'YXZ');
-    moveDirection.applyEuler(euler);
-
-    localPlayer.body.velocity.x = moveDirection.x;
-    localPlayer.body.velocity.z = moveDirection.z;
-
-    // Jumping
-    if (keyState['Space'] && checkIfOnGround()) {
-        localPlayer.body.velocity.y = JUMP_FORCE;
-    }
-
-    // Link camera to physics body
-    localPlayer.cameraHolder.position.copy(localPlayer.body.position);
-    localPlayer.cameraHolder.position.y += PLAYER_HALF_HEIGHT * 0.8; // Eye level
-}
-
-function checkIfOnGround() {
-    const start = localPlayer.body.position;
-    const end = new CANNON.Vec3(start.x, start.y - PLAYER_HALF_HEIGHT - 0.1, start.z);
-    const ray = new CANNON.Ray(start, end);
-    return ray.getDist = world.raycastClosest(start, end, {}, new CANNON.RaycastResult());
-}
-
-function handleDeathAndRespawn() {
-    if (!localPlayer) return;
-
-    // Check for fall death
-    if (!localPlayer.isDead && localPlayer.body.position.y < -20) {
-        takeDamage(9999); // Instantly die
-    }
-
-    // Check for health death
-    if (!localPlayer.isDead && localPlayer.health <= 0) {
-        localPlayer.isDead = true;
-        showStatusMessage(`YOU DIED. RESPAWNING...`, RESPAWN_TIME);
-        setTimeout(respawn, RESPAWN_TIME);
-        // Make body static so it doesn't fall while dead
-        localPlayer.body.type = CANNON.Body.STATIC;
-    }
-}
-
-function respawn() {
-    const spawnPoint = SPAWN_POINTS[Math.floor(Math.random() * SPAWN_POINTS.length)];
-    localPlayer.body.position.copy(spawnPoint);
-    localPlayer.body.velocity.set(0, 0, 0);
-    localPlayer.health = MAX_HEALTH;
-    localPlayer.isDead = false;
-    localPlayer.body.type = CANNON.Body.DYNAMIC;
-    healthBar.style.width = '100%';
-}
-
-function takeDamage(amount) {
-    if(localPlayer.isDead) return;
-    localPlayer.health -= amount;
-    const healthPercent = Math.max(0, localPlayer.health / MAX_HEALTH) * 100;
-    healthBar.style.width = `${healthPercent}%`;
-}
-
-
-// --- WEAPONS & SHOOTING ---
-function shoot() {
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera({x:0, y:0}, camera);
-
-    // Create tracer line
-    const startPoint = new THREE.Vector3();
-    camera.getWorldPosition(startPoint);
-    const endPoint = startPoint.clone().add(raycaster.ray.direction.clone().multiplyScalar(500));
-    
-    let hitPlayer = null;
-    let closestDist = Infinity;
-
-    // Check for hits against other players
-    for (const [id, player] of otherPlayers.entries()) {
-        if (!player.mesh.visible) continue;
-        const intersects = raycaster.intersectObject(player.mesh);
-        if (intersects.length > 0 && intersects[0].distance < closestDist) {
-            closestDist = intersects[0].distance;
-            hitPlayer = id;
-            endPoint.copy(intersects[0].point);
+            setupPostProcessing();
+            createWorld();
+            setupLights();
+            setupPointerLock();
+            setupEventListeners();
+            
+            // Start Firebase after basic scene is ready
+            firebaseSetup();
+            
+            animate();
         }
-    }
-    
-    // Send damage event to Firebase if a player was hit
-    if (hitPlayer) {
-        db.collection('gemini_fps_events').add({
-            type: 'damage',
-            targetId: hitPlayer,
-            amount: 25,
-            from: localPlayer.name,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    }
 
-    // Create visual tracer effect for everyone
-    db.collection('gemini_fps_events').add({
-        type: 'shoot',
-        playerId: localPlayer.id,
-        start: { x: startPoint.x, y: startPoint.y, z: startPoint.z },
-        end: { x: endPoint.x, y: endPoint.y, z: endPoint.z },
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-}
+        function createWorld() {
+            world = new THREE.Group();
+            scene.add(world);
 
-function createTracer(start, end) {
-    const geo = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const mat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 1.0 });
-    const line = new THREE.Line(geo, mat);
-    scene.add(line);
-    tracers.push({ line, startTime: Date.now() });
-}
+            // Tron Grid Floor
+            const gridHelper = new THREE.GridHelper(100, 100, 0x00ffff, 0x004444);
+            gridHelper.position.y = 0.01; // Slightly above the physics plane
+            scene.add(gridHelper);
 
-function updateTracers() {
-    const now = Date.now();
-    for (let i = tracers.length - 1; i >= 0; i--) {
-        const tracer = tracers[i];
-        const age = now - tracer.startTime;
-        if (age > 300) {
-            scene.remove(tracer.line);
-            tracers.splice(i, 1);
-        } else {
-            tracer.line.material.opacity = 1.0 - (age / 300);
+            // Invisible physical floor plane
+            const floorGeometry = new THREE.PlaneGeometry(100, 100);
+            const floorMaterial = new THREE.MeshBasicMaterial({ visible: false });
+            floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            world.add(floor); // Add to world for ground detection
+            
+            // Walls and Obstacles - now glowing outlines
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 });
+
+            const boxes = [
+                // Outer walls
+                { s: [100, 4, 2], p: [0, 2, 50] }, { s: [100, 4, 2], p: [0, 2, -50] },
+                { s: [2, 4, 100], p: [50, 2, 0] }, { s: [2, 4, 100], p: [-50, 2, 0] },
+                // Inner obstacles
+                { s: [10, 3, 2], p: [0, 1.5, -10] }, { s: [10, 3, 2], p: [0, 1.5, 10] },
+                { s: [2, 3, 10], p: [-10, 1.5, 0] }, { s: [2, 3, 10], p: [10, 1.5, 0] },
+                { s: [8, 3, 8], p: [20, 1.5, 20] }, { s: [8, 3, 8], p: [-20, 1.5, -20] }
+            ];
+
+            boxes.forEach(b => {
+                const wallGeometry = new THREE.BoxGeometry(b.s[0], b.s[1], b.s[2]);
+                
+                // Invisible collision mesh
+                const wallCollision = new THREE.Mesh(wallGeometry, new THREE.MeshBasicMaterial({ visible: false }));
+                wallCollision.position.set(b.p[0], b.p[1], b.p[2]);
+                world.add(wallCollision);
+
+                // Visible glowing edges
+                const edges = new THREE.EdgesGeometry(wallGeometry);
+                const line = new THREE.LineSegments(edges, lineMaterial);
+                line.position.copy(wallCollision.position);
+                scene.add(line);
+            });
         }
-    }
-}
-
-// --- MULTIPLAYER (FIREBASE) ---
-async function joinGame() {
-    const name = nameInput.value.trim() || 'Player' + Math.floor(Math.random() * 1000);
-    startButton.disabled = true;
-    authStatus.textContent = 'Authenticating...';
-
-    try {
-        const userCredential = await auth.signInAnonymously();
-        const id = userCredential.user.uid;
-        playerDocRef = gameCollectionRef.doc(id);
         
-        setupLocalPlayer(id, name);
-
-        const initialState = {
-            id, name, health: MAX_HEALTH, isDead: false,
-            p: { x: 0, y: 5, z: 0 },
-            r: { x: 0, y: 0, z: 0, w: 1 },
-            ts: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        await playerDocRef.set(initialState);
-        
-        startGame();
-        
-    } catch (error) {
-        console.error("Auth/Join Error:", error);
-        authStatus.textContent = "Error connecting. Please refresh.";
-    }
-}
-
-function startGame() {
-    loginScreen.style.display = 'none';
-    hud.style.display = 'flex';
-    crosshair.style.display = 'block';
-    gameContainer.requestPointerLock();
-    
-    // Listen for other player updates
-    gameCollectionRef.onSnapshot(snapshot => {
-        const playerIdsOnServer = new Set();
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.id === localPlayer.id) return;
-            playerIdsOnServer.add(data.id);
-
-            if (!otherPlayers.has(data.id)) {
-                addOtherPlayer(data);
-            } else {
-                updateOtherPlayer(data);
-            }
-        });
-
-        // Remove players who have disconnected
-        for (const id of otherPlayers.keys()) {
-            if (!playerIdsOnServer.has(id)) {
-                removeOtherPlayer(id);
-            }
+        function setupLights() {
+            // Minimal lighting for a TRON theme, relying on emissive materials
+            const ambientLight = new THREE.AmbientLight(0x4040ff, 0.5); // A faint blue ambient light
+            scene.add(ambientLight);
         }
-        updatePlayerListUI();
-    });
 
-    // Listen for global game events (shooting, damage)
-    db.collection('gemini_fps_events').where('timestamp', '>', new Date()).onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(change => {
-            if (change.type === 'added') {
-                const event = change.doc.data();
-                if (event.type === 'shoot' && event.playerId !== localPlayer.id) {
-                    createTracer(new THREE.Vector3(event.start.x, event.start.y, event.start.z), new THREE.Vector3(event.end.x, event.end.y, event.end.z));
+        function setupPostProcessing() {
+            const renderScene = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0.2;
+            bloomPass.strength = 1.2;
+            bloomPass.radius = 0.5;
+
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+        }
+
+        // --- FIREBASE LOGIC ---
+        async function firebaseSetup() {
+            // These globals are provided by the environment.
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-fps-app';
+            // Use user-provided config if globals are not available
+            const firebaseConfig = typeof __firebase_config !== 'undefined' 
+                ? JSON.parse(__firebase_config)
+                : { // Fallback config provided by user
+                    apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
+                    authDomain: "fpsmult-5f414.firebaseapp.com",
+                    projectId: "fpsmult-5f414",
+                    storageBucket: "fpsmult-5f414.firebasestorage.app",
+                    messagingSenderId: "353781130843",
+                    appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
+                };
+
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            playersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    playerInfoEl.textContent = `Player ID: ${userId.substring(0,6)}`;
+                    await joinGame();
+                    listenForPlayers();
+                    listenForPlayerHealth();
                 }
-                if (event.type === 'damage' && event.targetId === localPlayer.id) {
-                    takeDamage(event.amount);
-                    showStatusMessage(`HIT BY ${event.from}`, 1000);
+            });
+
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication failed: ", error);
+                playerInfoEl.textContent = "Authentication Failed";
+            }
+        }
+        
+        async function joinGame() {
+            playerDocRef = doc(db, playersCollectionRef.path, userId);
+            const startPos = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+            
+            player = {
+                id: userId,
+                position: { x: startPos.x, y: startPos.y, z: startPos.z },
+                rotation: { x: 0, y: 0, z: 0 },
+                health: 100,
+                color: `#${new THREE.Color(Math.random() * 0xffffff).getHexString()}`,
+                lastUpdate: serverTimestamp()
+            };
+
+            playerBody.position.copy(startPos);
+            
+            await setDoc(playerDocRef, player);
+
+            window.addEventListener('beforeunload', () => deleteDoc(playerDocRef));
+        }
+        
+        function listenForPlayers() {
+            onSnapshot(collection(db, playersCollectionRef.path), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    const playerData = change.doc.data();
+                    if (playerData.id === userId) return;
+
+                    if (change.type === "added" || change.type === "modified") {
+                        if (!players[playerData.id]) {
+                            // Create new player mesh - TRON style
+                            const geometry = new THREE.CapsuleGeometry(0.5, 1, 4, 16);
+                            const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
+                            const mesh = new THREE.Mesh(geometry, material);
+                            mesh.name = playerData.id; // For raycasting
+                            players[playerData.id] = { data: playerData, mesh: mesh };
+                            scene.add(mesh);
+                        }
+                        
+                        // Update position and rotation
+                        const p = players[playerData.id];
+                        p.data = playerData;
+                        p.mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
+                        p.mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
+                        p.mesh.material.color.set(playerData.color);
+
+                    } else if (change.type === "removed") {
+                        if (players[playerData.id]) {
+                            scene.remove(players[playerData.id].mesh);
+                            delete players[playerData.id];
+                        }
+                    }
+                });
+            });
+        }
+
+        function listenForPlayerHealth() {
+             onSnapshot(playerDocRef, (doc) => {
+                if(doc.exists()){
+                    const data = doc.data();
+                    player.health = data.health;
+                    hud.textContent = `Health: ${player.health}`;
+                    if(player.health <= 0) {
+                        respawn();
+                    }
+                }
+            });
+        }
+        
+        let lastUpdateTime = 0;
+        const updateInterval = 100; // ms
+
+        function updatePlayerOnFirebase() {
+            if (Date.now() - lastUpdateTime > updateInterval) {
+                 if (playerDocRef) {
+                    const currentRotation = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+                    updateDoc(playerDocRef, {
+                        "position.x": playerBody.position.x,
+                        "position.y": playerBody.position.y,
+                        "position.z": playerBody.position.z,
+                        "rotation.x": 0, // We only care about Y-axis rotation for the body
+                        "rotation.y": currentRotation.y,
+                        "rotation.z": 0,
+                        "lastUpdate": serverTimestamp()
+                    }).catch(err => console.error("Error updating player:", err));
+                }
+                lastUpdateTime = Date.now();
+            }
+        }
+        
+        // --- CONTROLS & MOVEMENT ---
+        function setupPointerLock() {
+            instructions.addEventListener('click', () => {
+                document.body.requestPointerLock();
+            });
+            document.addEventListener('pointerlockchange', () => {
+                blocker.style.display = document.pointerLockElement ? 'none' : 'flex';
+            });
+        }
+
+        function setupEventListeners() {
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onMouseMove(event) {
+            if (document.pointerLockElement) {
+                const movementX = event.movementX || 0;
+                const movementY = event.movementY || 0;
+
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(camera.quaternion);
+
+                euler.y -= movementX * 0.002;
+                euler.x -= movementY * 0.002;
+                euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
+                
+                camera.quaternion.setFromEuler(euler);
+            }
+        }
+
+        function onKeyDown(event) {
+            switch(event.code) {
+                case 'KeyW': moveDirection.forward = 1; break;
+                case 'KeyS': moveDirection.backward = 1; break;
+                case 'KeyA': moveDirection.left = 1; break;
+                case 'KeyD': moveDirection.right = 1; break;
+                case 'Space': if (canJump) playerVelocity.y = jumpHeight; break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch(event.code) {
+                case 'KeyW': moveDirection.forward = 0; break;
+                case 'KeyS': moveDirection.backward = 0; break;
+                case 'KeyA': moveDirection.left = 0; break;
+                case 'KeyD': moveDirection.right = 0; break;
+            }
+        }
+
+        function updateMovement(delta) {
+             const moveSpeed = playerSpeed * delta;
+            
+            const moveVector = new THREE.Vector3(
+                moveDirection.right - moveDirection.left,
+                0,
+                moveDirection.backward - moveDirection.forward
+            ).normalize();
+
+            if (moveVector.length() > 0) {
+                 // Use the camera's Y-axis rotation to make movement relative to view
+                 const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                 euler.setFromQuaternion(camera.quaternion);
+                 moveVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), euler.y);
+
+                 playerBody.position.x += moveVector.x * moveSpeed;
+                 playerBody.position.z += moveVector.z * moveSpeed;
+            }
+
+            // Gravity
+            playerVelocity.y += gravity * delta;
+            playerBody.position.y += playerVelocity.y * delta;
+            
+            handleCollisions();
+        }
+
+        function handleCollisions() {
+            const playerBox = new THREE.Box3().setFromObject(playerBody);
+            let onGround = false;
+
+            world.children.forEach(child => {
+                if (child === floor || child === playerBody) return;
+                const worldBox = new THREE.Box3().setFromObject(child);
+                
+                if (playerBox.intersectsBox(worldBox)) {
+                    const intersection = playerBox.clone().intersect(worldBox);
+                    const size = intersection.getSize(new THREE.Vector3());
+                    const center = intersection.getCenter(new THREE.Vector3());
+
+                    const playerCenter = playerBox.getCenter(new THREE.Vector3());
+
+                    // Determine overlap direction and correct position by finding the minimum penetration axis
+                    if (size.y < size.x && size.y < size.z) { // Vertical collision is the shallowest
+                        if (playerCenter.y > center.y) { // Hitting from above (landing)
+                           playerBody.position.y += size.y;
+                           playerVelocity.y = 0;
+                           onGround = true;
+                        } else { // Hitting from below (bumping head)
+                            playerBody.position.y -= size.y;
+                            playerVelocity.y *= -0.5;
+                        }
+                    } else if (size.x < size.z) { // Horizontal X collision is shallower
+                        if (playerCenter.x > center.x) {
+                            playerBody.position.x += size.x;
+                        } else {
+                            playerBody.position.x -= size.x;
+                        }
+                    } else { // Horizontal Z collision is shallower
+                         if (playerCenter.z > center.z) {
+                            playerBody.position.z += size.z;
+                        } else {
+                            playerBody.position.z -= size.z;
+                        }
+                    }
+                }
+            });
+
+            // Floor collision
+            if (playerBody.position.y < 0.9) {
+                playerVelocity.y = 0;
+                playerBody.position.y = 0.9;
+                onGround = true;
+            }
+            canJump = onGround;
+        }
+
+        // --- GAME LOGIC ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2(0, 0); // Center of the screen
+
+        function onMouseDown(event) {
+            if (document.pointerLockElement) {
+                shoot();
+            }
+        }
+
+        function shoot() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            for (let i = 0; i < intersects.length; i++) {
+                let obj = intersects[i].object;
+                 // Traverse up to find the parent player mesh if we hit a child
+                while(obj.parent && !obj.name) {
+                    obj = obj.parent;
+                }
+                
+                if (obj.name && players[obj.name]) {
+                    const targetId = obj.name;
+                    handleHit(targetId);
+                    break;
                 }
             }
-        });
-    });
-}
+        }
+        
+        async function handleHit(targetId) {
+            console.log(`Hit player ${targetId}`);
+            const targetRef = doc(db, playersCollectionRef.path, targetId);
+            const targetPlayer = players[targetId].data;
+            const newHealth = Math.max(0, targetPlayer.health - 20);
+            
+            await updateDoc(targetRef, { health: newHealth });
+            
+            // Visual feedback for hitting an enemy
+            hitMarker.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            setTimeout(() => {
+                hitMarker.style.backgroundColor = 'rgba(255, 255, 255, 0)';
+            }, 100);
+        }
 
-function addOtherPlayer(data) {
-    const material = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, PLAYER_HALF_HEIGHT * 2, 1), material);
-    mesh.position.set(data.p.x, data.p.y, data.p.z);
-    scene.add(mesh);
+        async function respawn() {
+            const spawnPoint = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+            playerBody.position.copy(spawnPoint);
+            playerVelocity.set(0,0,0);
+            
+            if (playerDocRef) {
+                await updateDoc(playerDocRef, {
+                    health: 100,
+                    "position.x": spawnPoint.x,
+                    "position.y": spawnPoint.y,
+                    "position.z": spawnPoint.z
+                });
+            }
+        }
 
-    otherPlayers.set(data.id, {
-        id: data.id,
-        name: data.name,
-        mesh,
-        targetPos: new THREE.Vector3().copy(mesh.position),
-        targetQuat: new THREE.Quaternion().copy(mesh.quaternion)
-    });
-}
+        // --- WINDOW & RENDER LOOP ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-function updateOtherPlayer(data) {
-    const player = otherPlayers.get(data.id);
-    if (!player) return;
-    player.targetPos.set(data.p.x, data.p.y, data.p.z);
-    player.targetQuat.set(data.r.x, data.r.y, data.r.z, data.r.w);
-    player.mesh.visible = !data.isDead;
-}
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
 
-function removeOtherPlayer(id) {
-    const player = otherPlayers.get(id);
-    if (player) {
-        scene.remove(player.mesh);
-        otherPlayers.delete(id);
-    }
-}
+            if (document.pointerLockElement) {
+                updateMovement(delta);
+                updatePlayerOnFirebase();
+            }
 
-function interpolateOtherPlayers(delta) {
-    const lerpFactor = delta * 10; // Adjust for smoothness
-    for (const player of otherPlayers.values()) {
-        player.mesh.position.lerp(player.targetPos, lerpFactor);
-        player.mesh.quaternion.slerp(player.targetQuat, lerpFactor);
-    }
-}
-
-async function syncLocalPlayerState() {
-    if (!playerDocRef || !localPlayer) return;
-    const now = Date.now();
-    if (now - lastSyncTime < PLAYER_SYNC_RATE) return;
-    lastSyncTime = now;
-
-    // We only need to sync the camera holder's rotation for other players
-    localPlayer.mesh.quaternion.setFromEuler(new THREE.Euler(0, localPlayer.cameraHolder.rotation.y, 0));
-
-    const state = {
-        p: { x: localPlayer.body.position.x, y: localPlayer.body.position.y, z: localPlayer.body.position.z },
-        r: { x: localPlayer.mesh.quaternion.x, y: localPlayer.mesh.quaternion.y, z: localPlayer.mesh.quaternion.z, w: localPlayer.mesh.quaternion.w },
-        health: localPlayer.health,
-        isDead: localPlayer.isDead,
-        ts: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await playerDocRef.update(state);
-}
-
-function updatePlayerListUI() {
-    let listHTML = `<span class="font-bold text-cyan-300">PLAYERS (${otherPlayers.size + 1})</span><br>`;
-    listHTML += `${localPlayer.name} (You)<br>`;
-    for(const player of otherPlayers.values()) {
-        listHTML += `${player.name}<br>`;
-    }
-    playerList.innerHTML = listHTML;
-}
-
-function showStatusMessage(text, duration) {
-    statusMessage.textContent = text;
-    statusMessage.style.display = 'block';
-    setTimeout(() => {
-        statusMessage.style.display = 'none';
-    }, duration);
-}
-
-
-// --- MAIN LOOP ---
-function animate() {
-    requestAnimationFrame(animate);
-    const delta = clock.getDelta();
-
-    world.step(1/60, delta);
-    updatePlayerMovement(delta);
-    handleDeathAndRespawn();
-    interpolateOtherPlayers(delta);
-    updateTracers();
-    syncLocalPlayerState();
-
-    composer.render();
-}
-
-// --- INITIALIZATION ---
-window.onload = () => {
-    init();
-    clock = new THREE.Clock();
-    authStatus.textContent = "Ready.";
-    startButton.disabled = false;
-    startButton.addEventListener('click', joinGame);
-    setupControls();
-    animate();
-};
-
-window.addEventListener('beforeunload', () => {
-    if (playerDocRef) playerDocRef.delete();
-});
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
-});
-
-</script>
+            composer.render();
+        }
+    </script>
 </body>
 </html>
+
+
