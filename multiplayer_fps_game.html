@@ -124,8 +124,8 @@
                 import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
                 // Firebase configuration (user-provided)
-                // If you want to override this at runtime (e.g. for testing), set window.__firebase_config
-                const FIREBASE_CONFIG = window.__firebase_config ?? {
+                // You can still override at runtime by setting window.__firebase_config before this module runs.
+                const firebaseConfig = window.__firebase_config ?? {
                     apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
                     authDomain: "fpsmult-5f414.firebaseapp.com",
                     projectId: "fpsmult-5f414",
@@ -298,7 +298,7 @@
             // Application/namespace id used for multi-tenant storage within the project
             const appId = window.__app_id ?? 'default-fps-app';
 
-            const app = initializeApp(FIREBASE_CONFIG);
+            const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
 
@@ -312,9 +312,13 @@
                 if (user) {
                     userId = user.uid;
                     playerInfoEl.textContent = `Player ID: ${userId.substring(0,6)}`;
-                    await joinGame();
-                    listenForPlayers();
-                    listenForPlayerHealth();
+
+                    // Only auto-join if the player has already chosen a nickname and clicked Play
+                    if (window.__chosen_nickname) {
+                        await joinGame();
+                        listenForPlayers();
+                        listenForPlayerHealth();
+                    }
                 }
             });
 
@@ -494,9 +498,7 @@
         
         // --- CONTROLS & MOVEMENT ---
         function setupPointerLock() {
-            instructions.addEventListener('click', () => {
-                document.body.requestPointerLock();
-            });
+            // Pointer lock is requested only when the user explicitly presses Play.
             document.addEventListener('pointerlockchange', () => {
                 blocker.style.display = document.pointerLockElement ? 'none' : 'flex';
             });
