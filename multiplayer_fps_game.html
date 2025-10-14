@@ -97,7 +97,6 @@
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-        import { CapsuleGeometry } from 'three/addons/geometries/CapsuleGeometry.js';
         
         // Firebase Imports (modular SDK)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -107,9 +106,9 @@
         // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
-            authDomain: "fpsmult-5f414.firebaseapp.com",
-            projectId: "fpsmult-5f414",
-            storageBucket: "fpsmult-5f414.appspot.com",
+            authDomain: "fpsmult-5f44.firebaseapp.com",
+            projectId: "fpsmult-5f44",
+            storageBucket: "fpsmult-5f44.appspot.com",
             messagingSenderId: "353781130843",
             appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
         };
@@ -393,16 +392,17 @@
                     if (change.type === "added" || change.type === "modified") {
                         if (!players[playerData.id]) {
                             // --- Player Added ---
-                            const geometry = new CapsuleGeometry(0.5, 1, 4, 16);
+                            // Replaced CapsuleGeometry with CylinderGeometry
+                            const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1.8, 16);
                             const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
                             const mesh = new THREE.Mesh(geometry, material);
 
                             const nameSprite = createNameSprite(playerData.nickname || 'anon', playerData.color || '#0ff');
-                            nameSprite.position.set(0, 1.8, 0); 
+                            nameSprite.position.set(0, 1.2, 0); 
                             mesh.add(nameSprite);
                             
-                            // Set initial position and rotation directly
-                            mesh.position.set(playerData.position.x, playerData.position.y - 0.9, playerData.position.z);
+                            // Set initial position and rotation directly, centering the mesh
+                            mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
                             mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
 
                             players[playerData.id] = { 
@@ -417,8 +417,8 @@
                             // --- Player Modified ---
                             const p = players[playerData.id];
                             p.data = playerData;
-                            // Update interpolation targets instead of setting position directly
-                            p.targetPosition.set(playerData.position.x, playerData.position.y - 0.9, playerData.position.z);
+                            // Update interpolation targets, centering the mesh
+                            p.targetPosition.set(playerData.position.x, playerData.position.y, playerData.position.z);
                             const targetEuler = new THREE.Euler(0, playerData.rotation.y, 0, 'YXZ');
                             p.targetQuaternion.setFromEuler(targetEuler);
                             
