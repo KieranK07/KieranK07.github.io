@@ -97,6 +97,7 @@
         import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { CapsuleGeometry } from 'three/examples/jsm/geometries/CapsuleGeometry.js';
         
         // Firebase Imports (modular SDK)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -104,13 +105,11 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- FIREBASE CONFIG ---
-        // Replace the placeholder values below with your project's actual Firebase configuration object.
-        // You can find this in your Firebase project settings under "General".
         const firebaseConfig = {
             apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
             authDomain: "fpsmult-5f414.firebaseapp.com",
             projectId: "fpsmult-5f414",
-            storageBucket: "fpsmult-5f414.firebasestorage.app",
+            storageBucket: "fpsmult-5f414.appspot.com",
             messagingSenderId: "353781130843",
             appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
         };
@@ -378,7 +377,7 @@
                     if (playerData.id === userId) return;
 
                     // Remove stale players
-                    if (playerData.lastSeen) {
+                    if (playerData.lastSeen && playerData.lastSeen.toMillis) {
                         const lastSeenMillis = playerData.lastSeen.toMillis();
                         if (Date.now() - lastSeenMillis > STALE_TTL_MS) {
                             if (players[playerData.id]) {
@@ -394,7 +393,7 @@
                     if (change.type === "added" || change.type === "modified") {
                         if (!players[playerData.id]) {
                             // --- Player Added ---
-                            const geometry = new THREE.CapsuleGeometry(0.5, 1, 4, 16);
+                            const geometry = new CapsuleGeometry(0.5, 1, 4, 16);
                             const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
                             const mesh = new THREE.Mesh(geometry, material);
 
@@ -606,5 +605,4 @@
     </script>
 </body>
 </html>
-
 
