@@ -69,8 +69,8 @@
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
-            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
         }
     }
     </script>
@@ -94,10 +94,10 @@
     <script type="module">
         // Three.js Imports
         import * as THREE from 'three';
-        import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-        import { CapsuleGeometry } from 'three/examples/jsm/geometries/CapsuleGeometry.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { CapsuleGeometry } from 'three/addons/geometries/CapsuleGeometry.js';
         
         // Firebase Imports (modular SDK)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -162,7 +162,7 @@
             camera.position.y = 1.7;
 
             // Player Body (for collision)
-            const playerGeometry = new THREE.BoxBufferGeometry(0.8, 1.8, 0.8);
+            const playerGeometry = new THREE.BoxGeometry(0.8, 1.8, 0.8);
             const playerMaterial = new THREE.MeshBasicMaterial({ visible: false });
             playerBody = new THREE.Mesh(playerGeometry, playerMaterial);
             playerBody.add(camera); // Attach camera to the player body
@@ -605,5 +605,4 @@
     </script>
 </body>
 </html>
-
 
