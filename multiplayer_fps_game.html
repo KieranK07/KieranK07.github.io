@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multiplayer FPS Game</title>
+    <!-- Simple SVG favicon (inline data URL) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23000'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%23fff'/%3E%3Cline x1='32' y1='4' x2='32' y2='14' stroke='%23fff' stroke-width='2'/%3E%3Cline x1='32' y1='50' x2='32' y2='60' stroke='%23fff' stroke-width='2'/%3E%3Cline x1='4' y1='32' x2='14' y2='32' stroke='%23fff' stroke-width='2'/%3E%3Cline x1='50' y1='32' x2='60' y2='32' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
     <style>
         body {
             margin: 0;
@@ -95,7 +97,10 @@
     <div id="blocker">
         <div id="instructions">
             <h1>Simple FPS</h1>
-            <p>Click to Play</p>
+            <div style="margin:12px 0">
+                <input id="nickname-input" type="text" placeholder="Enter a nickname" style="width:60%; padding:8px; font-size:1em; border-radius:6px; border:1px solid #444; background:transparent; color:white;" maxlength="20">
+                <button id="play-button" style="padding:8px 12px; margin-left:8px; font-size:1em; border-radius:6px; border:1px solid #2ee; background:#003; color:#0ff; cursor:pointer;">Play</button>
+            </div>
             <p><strong>Controls:</strong></p>
             <p>WASD to move | SPACE to jump | MOUSE to look | CLICK to shoot</p>
         </div>
@@ -155,12 +160,14 @@
             new THREE.Vector3(-15, 2, 15),
         ];
 
-        // --- DOM ELEMENTS ---
+    // --- DOM ELEMENTS ---
         const blocker = document.getElementById('blocker');
         const instructions = document.getElementById('instructions');
         const hud = document.getElementById('hud');
         const hitMarker = document.getElementById('hit-marker');
         const playerInfoEl = document.getElementById('player-info');
+    const nicknameInput = document.getElementById('nickname-input');
+    const playButton = document.getElementById('play-button');
 
         // --- INITIALIZE ---
         init();
@@ -197,7 +204,29 @@
             
             // Start Firebase after basic scene is ready
             firebaseSetup();
-            
+
+            // Play button will actually initiate joining once player provides a nickname
+            playButton.addEventListener('click', async () => {
+                const nickname = (nicknameInput.value || '').trim();
+                if (!nickname) {
+                    nicknameInput.focus();
+                    return;
+                }
+
+                // lock pointer and hide instructions
+                document.body.requestPointerLock();
+
+                // set chosen nickname then join (will be triggered after auth completes)
+                window.__chosen_nickname = nickname;
+
+                // If already authenticated + userId present, join immediately
+                if (auth && auth.currentUser && userId) {
+                    await joinGame();
+                    listenForPlayers();
+                    listenForPlayerHealth();
+                }
+            });
+
             animate();
         }
 
@@ -302,23 +331,39 @@
             }
         }
         
+        let heartbeatIntervalId = null;
+        const HEARTBEAT_MS = 10_000; // send lastSeen every 10s
+        const STALE_TTL_MS = 30_000; // consider a player stale if not seen for 30s
+
         async function joinGame() {
             // Create a DocumentReference under the players collection with the user's uid
             playerDocRef = doc(playersCollectionRef, userId);
             const startPos = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
-            
+
+            const nickname = window.__chosen_nickname ?? `anon-${userId.substring(0,6)}`;
+
             player = {
                 id: userId,
+                nickname: nickname,
                 position: { x: startPos.x, y: startPos.y, z: startPos.z },
                 rotation: { x: 0, y: 0, z: 0 },
                 health: 100,
                 color: `#${new THREE.Color(Math.random() * 0xffffff).getHexString()}`,
-                lastUpdate: serverTimestamp()
+                lastUpdate: serverTimestamp(),
+                lastSeen: serverTimestamp()
             };
 
             playerBody.position.copy(startPos);
-            
+
             await setDoc(playerDocRef, player);
+
+            // Heartbeat: periodically update lastSeen so others know we're alive
+            if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
+            heartbeatIntervalId = setInterval(() => {
+                if (playerDocRef) {
+                    updateDoc(playerDocRef, { lastSeen: serverTimestamp() }).catch(() => {});
+                }
+            }, HEARTBEAT_MS);
 
             // Clean up on unload
             window.addEventListener('beforeunload', () => {
@@ -326,11 +371,46 @@
             });
         }
         
+        function createNameSprite(text, color = '#0ff') {
+            const canvas = document.createElement('canvas');
+            const size = 256;
+            canvas.width = size;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0,0,size,64);
+            ctx.font = '28px sans-serif';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, size/2, 32);
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(2, 0.5, 1);
+            return sprite;
+        }
+
         function listenForPlayers() {
             // Listen to the players collection for added/modified/removed players
             onSnapshot(playersCollectionRef, (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     const playerData = change.doc.data();
+                    // Remove stale players if we detect lastSeen > TTL (best-effort)
+                    if (playerData.lastSeen && playerData.id !== userId) {
+                        const lastSeenMillis = playerData.lastSeen?.toMillis ? playerData.lastSeen.toMillis() : (new Date(playerData.lastSeen).getTime());
+                        if (lastSeenMillis && Date.now() - lastSeenMillis > STALE_TTL_MS) {
+                            // Remove stale from scene and attempt to delete doc
+                            if (players[playerData.id]) {
+                                scene.remove(players[playerData.id].mesh);
+                                if (players[playerData.id].nameSprite) scene.remove(players[playerData.id].nameSprite);
+                                delete players[playerData.id];
+                            }
+                            try { deleteDoc(doc(playersCollectionRef, playerData.id)); } catch (e) { /* best-effort */ }
+                            return;
+                        }
+                    }
+
                     if (playerData.id === userId) return;
 
                     if (change.type === "added" || change.type === "modified") {
@@ -340,7 +420,13 @@
                             const material = new THREE.MeshBasicMaterial({ color: playerData.color, wireframe: true });
                             const mesh = new THREE.Mesh(geometry, material);
                             mesh.name = playerData.id; // For raycasting
-                            players[playerData.id] = { data: playerData, mesh: mesh };
+
+                            // Name sprite above the player
+                            const nameSprite = createNameSprite(playerData.nickname || 'anon', playerData.color || '#0ff');
+                            nameSprite.position.set(0, 2.2, 0);
+                            mesh.add(nameSprite);
+
+                            players[playerData.id] = { data: playerData, mesh: mesh, nameSprite };
                             scene.add(mesh);
                         }
                         
@@ -351,9 +437,20 @@
                         p.mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
                         p.mesh.material.color.set(playerData.color);
 
+                        // Update name if changed
+                        if (p.nameSprite && playerData.nickname) {
+                            // Recreate sprite texture when nickname changes (simple approach)
+                            scene.remove(p.nameSprite);
+                            const newSprite = createNameSprite(playerData.nickname, playerData.color);
+                            newSprite.position.set(0, 2.2, 0);
+                            p.mesh.add(newSprite);
+                            p.nameSprite = newSprite;
+                        }
+
                     } else if (change.type === "removed") {
                         if (players[playerData.id]) {
                             scene.remove(players[playerData.id].mesh);
+                            if (players[playerData.id].nameSprite) scene.remove(players[playerData.id].nameSprite);
                             delete players[playerData.id];
                         }
                     }
