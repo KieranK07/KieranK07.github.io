@@ -103,12 +103,18 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- DYNAMIC FIREBASE CONFIG ---
-        // These variables are injected by the environment.
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT_ID.firebaseapp.com", projectId: "YOUR_PROJECT_ID" }; // Fallback for local dev
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-fps-app';
+        // --- FIREBASE CONFIG ---
+        // Replace the placeholder values below with your project's actual Firebase configuration object.
+        // You can find this in your Firebase project settings under "General".
+        const firebaseConfig = {
+            apiKey: "AIzaSyAZ5Xc4Hl1_bN9KLf8S32OxSH_P6JOZwx0",
+            authDomain: "fpsmult-5f414.firebaseapp.com",
+            projectId: "fpsmult-5f414",
+            storageBucket: "fpsmult-5f414.firebasestorage.app",
+            messagingSenderId: "353781130843",
+            appId: "1:353781130843:web:3a04c9d1f49b52f153417e"
+        };
+        const appId = 'default-fps-app'; // This is a namespace for the app's data
 
 
         // --- GAME SETUP ---
@@ -600,4 +606,5 @@
     </script>
 </body>
 </html>
+
 
