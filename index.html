@@ -1,13 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barebones Template</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="icon" type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50%25' y='90%25' font-size='90' fill='%232dd4bf' text-anchor='middle' font-family='Times New Roman, serif'%3EK%3C/text%3E%3C/svg%3E">
+
+    <title>Kieran Kelly | Software Developer & Hardware Hacker</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script src="tailwind-config.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <h1>Hello, World!</h1>
-    <script src="js/main.js"></script>
+<body class="font-sans">
+
+    <div id="ripple-container"></div>
+    <div id="floating-notification-container"
+         class="fixed top-0 left-0 w-full h-full pointer-events-none z-[100]"></div>
+
+    <div id="code-rain-overlay">
+        <div class="fixed top-4 left-4 text-accent-neon font-mono text-sm z-[103]">
+            CODE RAIN ACTIVE | Type to drop blocks. Press ESC to stop.
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="fixed top-0 z-20 w-full bg-primary-dark/80 backdrop-blur-xl shadow-lg">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="#hero" id="header-logo"
+               class="header-logo text-xl font-bold text-accent-neon neon-glow font-mono tracking-wider transition duration-300">
+                K.K.
+            </a>
+
+            <div class="space-x-4 flex items-center">
+                <a href="#education" class="nav-link hidden sm:inline">Education</a>
+                <a href="#skills" class="nav-link">Skills</a>
+                <a href="#projects" class="nav-link">Projects</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- HERO -->
+    <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+        <div id="three-container"></div>
+
+        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm">
+            <h1 class="text-6xl sm:text-8xl font-extrabold mb-4 scroll-reveal">Kieran Kelly</h1>
+            <p class="text-2xl sm:text-4xl text-accent-neon neon-glow scroll-reveal">Software Developer and Hardware Hacker</p>
+            <p class="mt-8 text-lg text-gray-200 scroll-reveal">Digital to Physical</p>
+            <a href="#skills"
+               class="cta-btn scroll-reveal">
+               Learn more
+            </a>
+        </div>
+    </section>
+
+    <!-- EDUCATION -->
+    <section id="education" class="section">
+        <div id="scroll-rotate-cube" class="cube-bg">
+            <div class="cube-container">
+                <div class="face front"></div>
+                <div class="face back"></div>
+                <div class="face left"></div>
+                <div class="face right"></div>
+                <div class="face top"></div>
+                <div class="face bottom"></div>
+            </div>
+        </div>
+
+        <h2 class="section-title scroll-reveal"><span class="text-accent-blue">Education</span></h2>
+
+        <div class="info-card scroll-reveal">
+            <h3 class="text-3xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
+            <p class="text-xl text-accent-neon mb-4">Bachelor of Science in Computer Science</p>
+
+            <div class="flex justify-between items-center border-t border-gray-700 pt-4">
+                <p class="text-lg text-gray-400">Freshman</p>
+                <p class="text-lg font-mono text-gray-300">Expected Graduation: 2029</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SKILLS -->
+    <section id="skills" class="section">
+        <div class="absolute inset-0 z-0 opacity-[0.15] circuit-background"></div>
+
+        <h2 class="section-title scroll-reveal"><span class="text-accent-blue">Expertise</span></h2>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+            <!-- Skill cards identical… -->
+        </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section id="projects" class="section relative">
+        <div class="glitch-background"></div>
+
+        <h2 class="section-title scroll-reveal">Projects</h2>
+
+        <div class="grid md:grid-cols-2 gap-10 relative z-10">
+            <!-- Project cards identical… -->
+        </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="section">
+        <h2 class="section-title scroll-reveal"><span class="text-accent-neon">Connect</span></h2>
+
+        <div class="contact-card scroll-reveal">
+            <!-- contact content identical… -->
+        </div>
+    </section>
+
+    <script src="script.js"></script>
 </body>
 </html>

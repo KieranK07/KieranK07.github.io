@@ -1,0 +1,109 @@
+/* BASE */
+html { scroll-behavior: smooth; }
+body {
+    background-color: #0f172a;
+    color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+}
+
+/* Scroll reveal */
+.scroll-reveal { opacity: 0; transform: translateY(20px); transition: opacity .8s, transform .8s; }
+.scroll-reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* Neon glow */
+.neon-glow { text-shadow: 0 0 5px rgba(45,212,191,.5), 0 0 10px rgba(45,212,191,.3); }
+
+/* Cards */
+.project-card, .skill-card, .contact-card {
+    box-shadow: 0 4px 12px rgba(0,0,0,.4), 0 10px 20px rgba(0,0,0,.2);
+    transition: transform .3s, box-shadow .3s;
+    border-radius: 2rem;
+    transform-style: preserve-3d;
+}
+.project-card:hover, .skill-card:hover, .contact-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(45,212,191,.15), 0 5px 10px rgba(45,212,191,.05);
+}
+
+/* Three.js layer */
+#three-container {
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    z-index:0;opacity:.15;
+}
+canvas { display:block; }
+
+/* Cube */
+#education { perspective:800px; }
+.cube-container { width:300px;height:300px;position:relative;transform-style:preserve-3d; }
+.face {
+    position:absolute;width:300px;height:300px;
+    border:2px solid #38bdf8;background:transparent;
+    box-shadow:0 0 15px rgba(56,189,248,.5);
+    opacity:.9;backface-visibility:hidden;
+}
+.front { transform:rotateY(0deg) translateZ(150px); }
+.back { transform:rotateX(180deg) translateZ(150px); }
+.left { transform:rotateY(-90deg) translateZ(150px); }
+.right { transform:rotateY(90deg) translateZ(150px); }
+.top { transform:rotateX(90deg) translateZ(150px); }
+.bottom { transform:rotateX(-90deg) translateZ(150px); }
+
+/* Circuit background */
+.circuit-background {
+    background-image:
+        radial-gradient(circle, rgba(45,212,191,.7) 1px, transparent 1px),
+        radial-gradient(circle, rgba(45,212,191,.7) 1px, transparent 1px);
+    background-size:50px 50px;
+    background-position:0 0, 25px 25px;
+    animation:circuit-pulse 8s infinite alternate;
+}
+@keyframes circuit-pulse {
+    0% { background-color:rgba(45,212,191,.0); }
+    100% { background-color:rgba(45,212,191,.08); }
+}
+
+/* Glitch */
+.glitch-background {
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    background-image: repeating-linear-gradient(45deg,#38bdf810,#38bdf810 1px,transparent 1px,transparent 50px),
+                      repeating-linear-gradient(-45deg,#38bdf810,#38bdf810 1px,transparent 1px,transparent 50px);
+    background-size:100px 100px;
+    animation:glitch-shift .8s infinite step-end;
+    opacity:.1;pointer-events:none;
+}
+@keyframes glitch-shift {
+    0%,100% { transform:translate(0,0); opacity:.1; }
+    25% { transform:translate(-.5px,.5px); opacity:.15; }
+    50% { transform:translate(.5px,-.5px); opacity:.1; }
+    75% { transform:translate(-1px,0); opacity:.15; }
+}
+
+/* About background */
+#about {
+    position:relative;
+    background:linear-gradient(-45deg,#0f172a,#2dd4bf20,#38bdf820,#0f172a);
+    background-size:400% 400%;
+    animation:wave-move 20s ease infinite;
+}
+@keyframes wave-move {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+}
+
+/* Ripples */
+#ripple-container { position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:99;overflow:hidden; }
+.ripple { position:absolute;width:5px;height:5px;background-color:rgba(45,212,191,.9);border-radius:50%;transform:translate(-50%,-50%) scale(0);animation:ripple-scale-full .4s cubic-bezier(.16,1,.3,1); }
+@keyframes ripple-scale-full { to { transform:translate(-50%,-50%) scale(350); opacity:0; } }
+
+/* Code rain */
+#code-rain-overlay {
+    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    background-color:rgba(0,0,0,.8);z-index:102;display:none;cursor:crosshair;
+}
+.code-block {
+    position:absolute;font-family:SF Mono,monospace;
+    font-size:14px;color:#2dd4bf;pointer-events:none;line-height:1;
+    width:14px;height:14px;text-align:center;
+}
