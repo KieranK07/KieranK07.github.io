@@ -309,10 +309,6 @@
 
        
 
-        #code-rain-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.8); z-index: 102; display: none; cursor: crosshair; }
-
-        .code-block { position: absolute; font-family: 'SF Mono', 'Roboto Mono', monospace; font-size: 14px; color: #2dd4bf; pointer-events: none; transition: opacity 0.5s ease-out; will-change: transform; line-height: 1; width: 14px; height: 14px; text-align: center; }
-
     </style>
 
 </head>
@@ -325,19 +321,6 @@
 
     <!-- Fixed container for the bouncing "Copied!" text --><div id="floating-notification-container" class="fixed top-0 left-0 w-full h-full pointer-events-none z-[100]"></div>
 
-
-
-    <!-- CODE RAIN OVERLAY (Hidden by default) -->
-
-    <div id="code-rain-overlay">
-
-        <div class="fixed top-4 left-4 text-accent-neon font-mono text-sm z-[103]">
-
-            CODE RAIN ACTIVE | Type to drop blocks. Press ESC to stop.
-
-        </div>
-
-    </div>
 
 
 
@@ -649,7 +632,7 @@
 
     <footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800 flex flex-col items-center space-y-4">
 
-        <p>&copy; 2025 Kieran Kelly. Built with Konami.</p>
+        <p>&copy; 2025 Kieran Kelly.</p>
 
     </footer>
 
@@ -818,266 +801,6 @@
             activeBubbles = activeBubbles.filter(bubble => bubble.update());
 
             animationFrameIdPhysics = requestAnimationFrame(animatePhysics);
-
-        }
-
-       
-
-        // --- CODE RAIN EASTER EGG ---
-
-        const CODE_GRAVITY = 0.5;
-
-        const CODE_DAMPING = 0.5;
-
-        const CODE_MIN_VELOCITY = 0.5;
-
-        const CODE_AIR_DRAG = 0.99;
-
-        const CODE_BLOCK_SIZE = 14;
-
-        const CODE_HORIZONTAL_LAUNCH = 5;
-
-        const DROP_INTERVAL = 50;
-
-
-
-        let isCodeRainActive = false;
-
-        let codeBlocks = [];
-
-        let codeRainOverlay = null;
-
-        let animationFrameIdRain = null;
-
-        let lastDropTime = 0;
-
-
-
-        class CodeBlock {
-
-            constructor(char, x) {
-
-                this.element = document.createElement('div');
-
-                this.element.textContent = char;
-
-                this.element.className = 'code-block';
-
-                this.x = x; this.y = 0;
-
-                this.vy = 0;
-
-                this.vx = (Math.random() * (CODE_HORIZONTAL_LAUNCH * 2)) - MAX_HORIZONTAL_LAUNCH;
-
-                this.hasSettled = false;
-
-                this.element.style.transform = `translate(${this.x}px, ${this.y}px)`;
-
-                codeRainOverlay.appendChild(this.element);
-
-            }
-
-
-
-            update() {
-
-                if (this.hasSettled) return true;
-
-                this.vy += CODE_GRAVITY;
-
-                this.vx *= CODE_AIR_DRAG;
-
-                this.y += this.vy;
-
-                this.x += this.vx;
-
-
-
-                // Wall Collision
-
-                const wallX = window.innerWidth - CODE_BLOCK_SIZE;
-
-                if (this.x < 0) { this.x = 0; this.vx = -this.vx * CODE_DAMPING; }
-
-                else if (this.x > wallX) { this.x = wallX; this.vx = -this.vx * CODE_DAMPING; }
-
-               
-
-                // Find Highest Landing Spot (Stacking/Floor)
-
-                let settlementY = window.innerHeight;
-
-                for (const otherBlock of codeBlocks) {
-
-                    if (otherBlock === this || !otherBlock.hasSettled) continue;
-
-                    const horizontallyOverlaps = (this.x < otherBlock.x + CODE_BLOCK_SIZE && this.x + CODE_BLOCK_SIZE > otherBlock.x);
-
-                   
-
-                    if (horizontallyOverlaps) {
-
-                        const landingY = otherBlock.y;
-
-                        if (landingY < settlementY && this.y + CODE_BLOCK_SIZE >= otherBlock.y && this.vy > 0) {
-
-                            settlementY = landingY;
-
-                        }
-
-                    }
-
-                }
-
-
-
-                // Apply Vertical Collision
-
-                if (this.y + CODE_BLOCK_SIZE >= settlementY) {
-
-                    this.y = settlementY - CODE_BLOCK_SIZE;
-
-                    if (Math.abs(this.vy) > CODE_MIN_VELOCITY) {
-
-                        this.vy = -this.vy * CODE_DAMPING;
-
-                        this.vx *= 0.8;
-
-                    } else {
-
-                        this.vy = 0;
-
-                        this.vx = 0;
-
-                        this.hasSettled = true;
-
-                    }
-
-                }
-
-               
-
-                this.element.style.transform = `translate(${this.x}px, ${this.y}px)`;
-
-                return true;
-
-            }
-
-            destroy() {
-
-                this.element.style.opacity = '0';
-
-                setTimeout(() => this.element.remove(), 500);
-
-            }
-
-        }
-
-       
-
-        function handleKeyDrop(e) {
-
-            if (!isCodeRainActive || e.key === 'Escape' || e.key.length !== 1 || e.key.match(/\s/)) {
-
-                if (e.key === 'Escape') stopCodeRain();
-
-                return;
-
-            }
-
-            const now = Date.now();
-
-            if (now - lastDropTime < DROP_INTERVAL) return;
-
-           
-
-            lastDropTime = now;
-
-            const initialX = Math.random() * (window.innerWidth - CODE_BLOCK_SIZE);
-
-            codeBlocks.push(new CodeBlock(e.key.toUpperCase(), initialX));
-
-        }
-
-
-
-        function codeRainLoop() {
-
-            if (!isCodeRainActive) return;
-
-            codeBlocks = codeBlocks.filter(block => block.update());
-
-            animationFrameIdRain = requestAnimationFrame(codeRainLoop);
-
-        }
-
-
-
-        function startCodeRain(e) {
-
-            if (e && e.preventDefault) e.preventDefault();
-
-            if (isCodeRainActive) return;
-
-            isCodeRainActive = true;
-
-            codeRainOverlay = document.getElementById('code-rain-overlay');
-
-            codeRainOverlay.style.display = 'block';
-
-            document.addEventListener('keydown', handleKeyDrop);
-
-            animationFrameIdRain = requestAnimationFrame(codeRainLoop);
-
-        }
-
-       
-
-        function stopCodeRain() {
-
-            isCodeRainActive = false;
-
-            document.removeEventListener('keydown', handleKeyDrop);
-
-            if (animationFrameIdRain) cancelAnimationFrame(animationRainId);
-
-            codeBlocks.forEach(block => block.destroy());
-
-            codeBlocks = [];
-
-            setTimeout(() => { codeRainOverlay.style.display = 'none'; }, 500);
-
-        }
-
-       
-
-        // --- KONAMI CODE DETECTION ---
-
-        const KONAMI_CODE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA', 'Enter'];
-
-        let konamiIndex = 0;
-
-        function handleKonamiCode(e) {
-
-            if (e.code === KONAMI_CODE[konamiIndex]) {
-
-                konamiIndex++;
-
-                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault();
-
-                if (konamiIndex === KONAMI_CODE.length) {
-
-                    konamiIndex = 0;
-
-                    if (!isCodeRainActive) startCodeRain(e);
-
-                }
-
-            } else {
-
-                konamiIndex = 0;
-
-            }
 
         }
 
@@ -1478,10 +1201,6 @@
         // --- CORE APPLICATION LOGIC ---
 
         document.addEventListener('DOMContentLoaded', () => {
-
-           
-
-            document.addEventListener('keydown', handleKonamiCode);
 
             document.addEventListener('mousemove', (event) => {
 
