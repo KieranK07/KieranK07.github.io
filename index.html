@@ -26,6 +26,7 @@
 
 
 
+
     <!-- Configure Tailwind to use Inter font and define custom colors --><script>
 
         tailwind.config = {
@@ -137,161 +138,27 @@
 
 
 
-        /* --- THREE.JS CYBER GRID --- */
+        /* --- THREE.JS SCROLL CUBE CANVAS --- */
 
-        #three-container {
+        #scroll-cube-canvas {
 
-            position: absolute;
+            position: fixed;
 
             top: 0;
 
             left: 0;
 
-            width: 100%;
+            width: 100vw;
 
-            height: 100%;
+            height: 100vh;
 
-            z-index: 0;
+            pointer-events: none;
 
-            opacity: 0.15;
-
-        }
-
-        canvas { display: block; }
-
-
-
-        /* --- EDUCATION CUBE --- */
-
-        #education { perspective: 800px; }
-
-        .cube-container {
-
-            width: 300px; height: 300px;
-
-            position: relative;
-
-            transform-style: preserve-3d;
-
-            transform: translateZ(-150px) rotateX(0deg) rotateY(0deg);
+            z-index: 1;
 
         }
 
-        .face {
-
-            position: absolute;
-
-            width: 300px; height: 300px;
-
-            border: 2px solid #38bdf8;
-
-            background-color: transparent;
-
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
-
-            opacity: 0.9;
-
-            backface-visibility: hidden;
-
-        }
-
-        .front  { transform: rotateY(0deg) translateZ(150px); }
-
-        .back   { transform: rotateX(180deg) translateZ(150px); }
-
-        .right  { transform: rotateY(90deg) translateZ(150px); }
-
-        .left   { transform: rotateY(-90deg) translateZ(150px); }
-
-        .top    { transform: rotateX(90deg) translateZ(150px); }
-
-        .bottom { transform: rotateX(-90deg) translateZ(150px); }
-
-
-
-        /* --- SKILLS CIRCUITRY BACKGROUND --- */
-
-        .circuit-background {
-
-            background-image:
-
-                radial-gradient(circle, rgba(45, 212, 191, 0.7) 1px, transparent 1px),
-
-                radial-gradient(circle, rgba(45, 212, 191, 0.7) 1px, transparent 1px);
-
-            background-size: 50px 50px;
-
-            background-position: 0 0, 25px 25px;
-
-            animation: circuit-pulse 8s infinite alternate;
-
-        }
-
-        @keyframes circuit-pulse {
-
-            0% { background-color: rgba(45, 212, 191, 0.0); }
-
-            100% { background-color: rgba(45, 212, 191, 0.08); }
-
-        }
-
-
-
-        /* --- PROJECTS GLITCH BACKGROUND --- */
-
-        .glitch-background {
-
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-
-            background-image: repeating-linear-gradient(45deg, #38bdf810, #38bdf810 1px, transparent 1px, transparent 50px),
-
-                              repeating-linear-gradient(-45deg, #38bdf810, #38bdf810 1px, transparent 1px, transparent 50px);
-
-            background-size: 100px 100px;
-
-            animation: glitch-shift 0.8s infinite step-end;
-
-            opacity: 0.1; z-index: 0; pointer-events: none;
-
-        }
-
-        @keyframes glitch-shift {
-
-            0%, 100% { transform: translate(0, 0); opacity: 0.1; }
-
-            25% { transform: translate(-0.5px, 0.5px); opacity: 0.15; }
-
-            50% { transform: translate(0.5px, -0.5px); opacity: 0.1; }
-
-            75% { transform: translate(-1px, 0); opacity: 0.15; }
-
-        }
-
-
-
-        /* --- ABOUT NEON WAVE GRADIENT --- */
-
-        #about {
-
-            position: relative;
-
-            background: linear-gradient(-45deg, #0f172a, #2dd4bf20, #38bdf820, #0f172a);
-
-            background-size: 400% 400%;
-
-            animation: wave-move 20s ease infinite;
-
-        }
-
-        @keyframes wave-move {
-
-            0% { background-position: 0% 50%; }
-
-            50% { background-position: 100% 50%; }
-
-            100% { background-position: 0% 50%; }
-
-        }
+        #scroll-cube-canvas canvas { display: block; }
 
        
 
@@ -321,6 +188,8 @@
 
     <!-- Fixed container for the bouncing "Copied!" text --><div id="floating-notification-container" class="fixed top-0 left-0 w-full h-full pointer-events-none z-[100]"></div>
 
+    <!-- Three.js scroll-driven cube canvas --><div id="scroll-cube-canvas"></div>
+
 
 
 
@@ -332,15 +201,13 @@
 
             <div class="space-x-4 flex items-center">
 
-                <!-- Added "nav-link" class for JS targeting -->
-
                 <a href="#education" class="nav-link text-gray-300 hover:text-accent-blue transition duration-300 hidden sm:inline">Education</a>
 
-                <a href="#skills" class="nav-link text-gray-300 hover:text-accent-blue transition duration-300">Skills</a>
+                <a href="#experience" class="nav-link text-gray-300 hover:text-accent-blue transition duration-300 hidden sm:inline">Experience</a>
+
+                <a href="#skills" class="nav-link text-gray-300 hover:text-accent-blue transition duration-300">Expertise</a>
 
                 <a href="#projects" class="nav-link text-gray-300 hover:text-accent-blue transition duration-300">Projects</a>
-
-                <a href="#about" class="nav-link text-gray-300 hover:text-accent-blue transition duration-300">About</a>
 
                 <a href="#contact" class="nav-link text-gray-300 hover:text-accent-neon transition duration-300">Contact</a>
 
@@ -355,8 +222,6 @@
     <!-- 1. Hero Section -->
 
     <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-
-        <!-- THREE.JS CONTAINER --><div id="three-container"></div>
 
         <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm">
 
@@ -392,30 +257,6 @@
 
     <!-- 2. Education Section --><section id="education" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative overflow-hidden">
 
-        <!-- 3D CSS Cube Background -->
-
-        <div id="scroll-rotate-cube" class="absolute inset-0 flex items-center justify-center opacity-[0.05] z-0">
-
-            <div class="cube-container">
-
-                <div class="face front"></div>
-
-                <div class="face back"></div>
-
-                <div class="face left"></div>
-
-                <div class="face right"></div>
-
-                <div class="face top"></div>
-
-                <div class="face bottom"></div>
-
-            </div>
-
-        </div>
-
-
-
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal relative z-10"><span class="text-accent-blue">Education</span></h2>
 
        
@@ -440,13 +281,51 @@
 
 
 
-    <!-- 3. Skills Section --><section id="skills" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 relative overflow-hidden">
+    <!-- 3. Experience Section --><section id="experience" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 relative overflow-hidden">
 
-        <!-- Circuitry Background Layer (Dramatic Pulse) -->
+        <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal relative z-10"><span class="text-accent-blue">Experience</span></h2>
 
-        <div class="absolute inset-0 z-0 opacity-[0.15] circuit-background"></div>
+        <div class="max-w-3xl mx-auto space-y-8 relative z-10">
 
-       
+            <!-- SBS Internship --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
+
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+
+                    <h3 class="text-2xl font-bold text-white">IT Infrastructure Intern</h3>
+
+                    <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">May 2026 – Aug 2026</span>
+
+                </div>
+
+                <p class="text-accent-neon font-semibold mb-4">Strategic Business Systems, Inc. (SBS) &mdash; Washington, DC Metro Area</p>
+
+                <p class="text-gray-300">Contributed to IT infrastructure design and operations at an IT services firm serving corporate, non-profit, and government clients. Work spanned cloud infrastructure, networking, server and storage systems, cybersecurity, and disaster recovery technologies.</p>
+
+            </div>
+
+            <!-- DUNE Internship --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.2s;">
+
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+
+                    <h3 class="text-2xl font-bold text-white">Research Intern &mdash; AI &amp; Physics</h3>
+
+                    <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">May 2026 – Present</span>
+
+                </div>
+
+                <p class="text-accent-neon font-semibold mb-4">DUNE Experiment &mdash; Remote (Fermilab, IL &amp; SURF, SD)</p>
+
+                <p class="text-gray-300">Working under Dr. Psihas in coordination with the <strong>Deep Underground Neutrino Experiment (DUNE)</strong> — a Fermilab-led international physics collaboration that fires neutrinos 1,300 km from Illinois to detectors a mile underground at the Sanford Underground Research Facility in South Dakota. Building an <strong>AI RAG (Retrieval-Augmented Generation) assistant</strong> to help researchers query and navigate the experiment's documentation and datasets.</p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- 4. Skills Section --><section id="skills" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 relative overflow-hidden">
 
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal relative z-10"><span class="text-accent-blue">Expertise</span></h2>
 
@@ -514,10 +393,6 @@
 
     <!-- 4. Projects Section --><section id="projects" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 relative overflow-hidden">
 
-        <!-- Glitch/Matrix Background Layer -->
-
-        <div class="glitch-background"></div>
-
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal relative z-10">Projects</h2>
 
 
@@ -536,7 +411,6 @@
 
                 </p>
 
-                <a href="https://github.com/kierank07/ai-rc-car-repo" target="_blank" class="mt-4 inline-block text-accent-blue hover:text-teal-400 font-bold">View Source (GitHub &rarr;)</a>
 
             </div>
 
@@ -554,7 +428,6 @@
 
                 </p>
 
-                <a href="https://github.com/kierank07/pcb-card-repo" target="_blank" class="mt-4 inline-block text-accent-neon hover:text-accent-blue font-bold">View Design (GitHub &rarr;)</a>
 
             </div>
 
@@ -564,61 +437,49 @@
 
 
 
-    <!-- 5. About Section removed -->
-
-
-
     <!-- 6. Contact Section --><section id="contact" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <h2 class="text-5xl font-bold text-center mb-12 scroll-reveal"><span class="text-accent-neon">Connect</span></h2>
 
-       
+        <div class="max-w-sm mx-auto p-8 bg-gray-800 rounded-[2rem] border border-gray-700 shadow-2xl scroll-reveal contact-card text-center" style="transition-delay: 0.2s;">
 
-        <!-- Business Card / Contact Info --><div class="max-w-md mx-auto p-6 bg-gray-800 rounded-[2rem] border border-gray-700 shadow-2xl scroll-reveal contact-card" style="transition-delay: 0.2s;">
+            <div class="w-20 h-20 bg-primary-dark rounded-full flex items-center justify-center border-2 border-accent-neon shadow-xl mx-auto mb-5">
 
-               <div class="flex flex-col sm:flex-row items-center justify-between">
-
-                <div class="text-center sm:text-left mb-6 sm:mb-0 w-full sm:w-auto">
-
-                    <p class="text-2xl font-bold text-white">Kieran Kelly</p>
-
-                    <p class="text-accent-neon font-mono mt-1 mb-6">Developer & Hacker</p>
-
-                   
-
-                    <div class="flex flex-col space-y-2 mt-4">
-
-                        <!-- Link to copy email/call bounce function --><a href="#" id="contact-email-link" onclick="copyAndBounce(event, 'kieranjokelly@gmail.com')" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">kieranjokelly@gmail.com</a>
-
-                        <!-- Link to copy phone number/call bounce function --><a href="#" onclick="copyAndBounce(event, '+1 240 268 9430')" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">+1 240 268 9430</a>
-
-                    </div>
-
-                </div>
-
-                  <!-- Visual representation of the business card PCB with Times New Roman 'K' logo --><div class="w-24 h-40 bg-primary-dark rounded-lg p-2 flex items-center justify-center border-2 border-accent-neon shadow-xl">
-
-                    <p class="text-5xl font-serif text-accent-neon" style="font-family: 'Times New Roman', serif;">K</p>
-
-                </div>
+                <p class="text-4xl font-serif text-accent-neon" style="font-family: 'Times New Roman', serif;">K</p>
 
             </div>
 
-        </div>
+            <p class="text-2xl font-bold text-white">Kieran Kelly</p>
 
+            <p class="text-accent-neon font-mono mt-1 mb-6">Software Developer &amp; Hardware Hacker</p>
 
+            <div class="flex flex-col space-y-2 mb-6">
 
-        <div class="flex justify-center space-x-8 mt-12 scroll-reveal" style="transition-delay: 0.1s;">
+                <a href="#" onclick="copyAndBounce(event, 'kieranjokelly@gmail.com')" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">kieranjokelly@gmail.com</a>
 
-            <!-- GitHub Icon/Link (using Lucide icon) --><a href="https://github.com/kierank07" target="_blank" class="text-gray-400 hover:text-accent-neon transition duration-300">
+                <a href="#" onclick="copyAndBounce(event, '+1 240 268 9430')" class="text-lg text-gray-300 hover:text-accent-blue transition duration-300 p-2 rounded-lg text-center bg-gray-700/50 hover:bg-gray-700">+1 240 268 9430</a>
 
-                <i data-lucide="github" class-name="w-10 h-10"></i>
+            </div>
+
+            <a href="https://www.linkedin.com/in/kieran-kelly07/" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 bg-accent-neon text-gray-900 font-bold rounded-full hover:bg-teal-300 transition duration-300 shadow-lg">
+
+                <i data-lucide="linkedin" class="w-5 h-5"></i>Connect on LinkedIn
 
             </a>
 
-            <!-- Instagram Icon/Link (using Lucide icon) --><a href="https://instagram.com/stupidlife07" target="_blank" class="text-gray-400 hover:text-accent-blue transition duration-300">
+        </div>
 
-                <i data-lucide="instagram" class-name="w-10 h-10"></i>
+        <div class="flex justify-center space-x-8 mt-12 scroll-reveal" style="transition-delay: 0.1s;">
+
+            <!-- GitHub --><a href="https://github.com/kierank07" target="_blank" class="text-gray-400 hover:text-accent-neon transition duration-300">
+
+                <i data-lucide="github" class="w-8 h-8"></i>
+
+            </a>
+
+            <!-- LinkedIn --><a href="https://www.linkedin.com/in/kieran-kelly07/" target="_blank" class="text-gray-400 hover:text-accent-blue transition duration-300">
+
+                <i data-lucide="linkedin" class="w-8 h-8"></i>
 
             </a>
 
@@ -632,7 +493,7 @@
 
     <footer class="py-10 text-center text-gray-500 text-sm border-t border-gray-800 flex flex-col items-center space-y-4">
 
-        <p>&copy; 2025 Kieran Kelly.</p>
+        <p>&copy; 2026 Kieran Kelly.</p>
 
     </footer>
 
@@ -806,225 +667,146 @@
 
        
 
-        // --- THREE.JS CYBER GRID LOGIC ---
+        // --- THREE.JS SCROLL-DRIVEN CUBE ---
 
-        let scene, camera, renderer, lines;
+        let cubeRenderer, cubeScene, cubeCamera;
+        let cubeMesh, cubeGlowMesh, cubeCorners;
 
-        let mouseX = 0;
+        // Keyframes: p = scroll progress (0–1), rx/ry/rz in radians, s = scale, o = opacity
+        // At p=0.12 the cube hits the perfect isometric angle → looks like a hexagon
+        const CUBE_KF = [
+            { p: 0.00, rx: 0,      ry: 0,      rz: 0,     s: 1.00, o: 0.80 },
+            { p: 0.12, rx: 0.6155, ry: 0.7854, rz: 0,     s: 0.98, o: 0.75 },
+            { p: 0.28, rx: 0.96,   ry: 1.57,   rz: 0.17,  s: 0.86, o: 0.62 },
+            { p: 0.45, rx: 1.22,   ry: 2.79,   rz: 0.35,  s: 0.60, o: 0.44 },
+            { p: 0.65, rx: 1.57,   ry: 4.01,   rz: 0.52,  s: 0.34, o: 0.24 },
+            { p: 0.85, rx: 1.92,   ry: 5.41,   rz: 0.70,  s: 0.14, o: 0.08 },
+            { p: 1.00, rx: 2.18,   ry: 6.28,   rz: 0.78,  s: 0.02, o: 0.00 },
+        ];
 
-        let mouseY = 0;
+        function lerpVal(a, b, t) { return a + (b - a) * t; }
 
-        const NEON_COLOR = 0x2dd4bf;
+        function initScrollCube() {
 
-        const targetCameraPosition = new THREE.Vector3();
+            const container = document.getElementById('scroll-cube-canvas');
 
+            if (!container || typeof THREE === 'undefined') return;
 
+            // Scene
+            cubeScene = new THREE.Scene();
 
-        function init3D() {
+            // Camera — centred, looking straight at the cube front face
+            cubeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            cubeCamera.position.z = 5;
 
-            const container = document.getElementById('three-container');
+            // Renderer on a transparent canvas
+            cubeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            cubeRenderer.setSize(window.innerWidth, window.innerHeight);
+            cubeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            cubeRenderer.setClearColor(0x000000, 0);
+            container.appendChild(cubeRenderer.domElement);
 
-            if (!container) return;
+            // Cube size — sized to frame the hero card nicely
+            const SIZE = 2.4;
+            const HALF = SIZE / 2;
 
+            // Primary wireframe edges
+            const edgesGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(SIZE, SIZE, SIZE));
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.85 });
+            cubeMesh = new THREE.LineSegments(edgesGeo, edgesMat);
+            cubeScene.add(cubeMesh);
 
+            // Soft glow layer — slightly larger, very faint
+            const glowGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(SIZE * 1.06, SIZE * 1.06, SIZE * 1.06));
+            const glowMat = new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.12 });
+            cubeGlowMesh = new THREE.LineSegments(glowGeo, glowMat);
+            cubeScene.add(cubeGlowMesh);
 
-            const rect = container.getBoundingClientRect();
-
-            scene = new THREE.Scene();
-
-            scene.fog = new THREE.Fog(0x0f172a, 10, 800);
-
-
-
-            camera = new THREE.PerspectiveCamera(75, rect.width / rect.height, 0.1, 1000);
-
-            camera.position.set(0, 100, 300);
-
-            camera.rotation.x = -0.3;
-
-
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-
-            renderer.setSize(rect.width, rect.height);
-
-            renderer.setClearColor(0x000000, 0);
-
-            container.appendChild(renderer.domElement);
-
-
-
-            // Create Grid
-
-            const gridSize = 1000;
-
-            const divisions = 50;
-
-            const step = gridSize / divisions;
-
-            const lineGeometry = new THREE.BufferGeometry();
-
-            const vertices = [];
-
-           
-
-            for (let i = 0; i <= divisions; i++) {
-
-                const x = -gridSize / 2 + i * step;
-
-                vertices.push(x, 0, -gridSize / 2, x, 0, gridSize / 2);  
-
+            // Glowing dots at each of the 8 corners
+            const cornerPos = [];
+            for (const x of [-HALF, HALF]) for (const y of [-HALF, HALF]) for (const z of [-HALF, HALF]) {
+                cornerPos.push(x, y, z);
             }
+            const cornerGeo = new THREE.BufferGeometry();
+            cornerGeo.setAttribute('position', new THREE.Float32BufferAttribute(cornerPos, 3));
+            const cornerMat = new THREE.PointsMaterial({ color: 0x2dd4bf, size: 0.07, transparent: true, opacity: 0.95 });
+            cubeCorners = new THREE.Points(cornerGeo, cornerMat);
+            cubeScene.add(cubeCorners);
 
-            for (let i = 0; i <= divisions; i++) {
+            window.addEventListener('resize', onCubeResize, { passive: true });
+            window.addEventListener('scroll', updateScrollCube, { passive: true });
 
-                const z = -gridSize / 2 + i * step;
-
-                vertices.push(-gridSize / 2, 0, z, gridSize / 2, 0, z);  
-
-            }
-
-
-
-            lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-            const lineMaterial = new THREE.LineBasicMaterial({ color: NEON_COLOR, linewidth: 1, transparent: true, opacity: 0.5 });
-
-            lines = new THREE.LineSegments(lineGeometry, lineMaterial);
-
-            lines.position.y = 0;
-
-            scene.add(lines);
-
-
-
-            // Add subtle, floating points
-
-            const pointsGeometry = new THREE.BufferGeometry();
-
-            const verticesPoints = [];
-
-            for (let i = 0; i < 200; i++) {
-
-                const x = Math.random() * gridSize - gridSize / 2;
-
-                const y = Math.random() * 200 + 50;
-
-                const z = Math.random() * gridSize - gridSize / 2;
-
-                verticesPoints.push(x, y, z);
-
-            }
-
-            pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(verticesPoints, 3));
-
-            const pointsMaterial = new THREE.PointsMaterial({ color: NEON_COLOR, size: 2, sizeAttenuation: true, transparent: true, opacity: 0.8 });
-
-            scene.add(new THREE.Points(pointsGeometry, pointsMaterial));
-
-
-
-            window.addEventListener('resize', onWindowResize, false);
-
-            animate3D();
+            updateScrollCube(); // set initial state
+            renderScrollCube(); // kick off render loop
 
         }
 
+        function onCubeResize() {
 
+            if (!cubeCamera || !cubeRenderer) return;
 
-        function onWindowResize() {
+            cubeCamera.aspect = window.innerWidth / window.innerHeight;
 
-            const container = document.getElementById('three-container');
+            cubeCamera.updateProjectionMatrix();
 
-            if (container && camera) {
-
-                const rect = container.getBoundingClientRect();
-
-                camera.aspect = rect.width / rect.height;
-
-                camera.updateProjectionMatrix();
-
-                renderer.setSize(rect.width, rect.height);
-
-            }
+            cubeRenderer.setSize(window.innerWidth, window.innerHeight);
 
         }
 
+        function updateScrollCube() {
 
+            if (!cubeMesh) return;
 
-        function animate3D() {
+            const scrollY   = window.scrollY;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const progress  = maxScroll > 0 ? Math.min(scrollY / maxScroll, 1) : 0;
 
-            requestAnimationFrame(animate3D);
+            // Find the two surrounding keyframes
+            let k0 = CUBE_KF[0], k1 = CUBE_KF[CUBE_KF.length - 1];
 
-            if (lines) {
+            for (let i = 0; i < CUBE_KF.length - 1; i++) {
 
-                lines.rotation.y += 0.0005;
+                if (progress >= CUBE_KF[i].p && progress <= CUBE_KF[i + 1].p) {
 
-                lines.position.z = (lines.position.z + 0.5) % 100;
+                    k0 = CUBE_KF[i]; k1 = CUBE_KF[i + 1]; break;
 
-                if (lines.position.z > 0) lines.position.z -= 100;
-
-            }
-
-
-
-            // Camera Mouse Look Effect
-
-            if (camera) {
-
-                const windowHalfX = window.innerWidth / 2;
-
-                const windowHalfY = window.innerHeight / 2;
-
-                targetCameraPosition.x = (mouseX - windowHalfX) * 0.03;
-
-                targetCameraPosition.y = 100 + (mouseY - windowHalfY) * 0.03;
-
-                camera.position.x += (targetCameraPosition.x - camera.position.x) * 0.05;
-
-                camera.position.y += (targetCameraPosition.y - camera.position.y) * 0.05;
+                }
 
             }
 
+            const t  = k1.p === k0.p ? 0 : (progress - k0.p) / (k1.p - k0.p);
+            const rx = lerpVal(k0.rx, k1.rx, t);
+            const ry = lerpVal(k0.ry, k1.ry, t);
+            const rz = lerpVal(k0.rz, k1.rz, t);
+            const s  = lerpVal(k0.s,  k1.s,  t);
+            const o  = lerpVal(k0.o,  k1.o,  t);
 
+            // Apply to all three objects
+            for (const obj of [cubeMesh, cubeGlowMesh, cubeCorners]) {
 
-            if (renderer && scene && camera) {
+                obj.rotation.set(rx, ry, rz);
 
-                renderer.render(scene, camera);
+                obj.scale.setScalar(s);
 
             }
+
+            cubeMesh.material.opacity     = o;
+
+            cubeGlowMesh.material.opacity = o * 0.15;
+
+            cubeCorners.material.opacity  = o;
 
         }
 
+        function renderScrollCube() {
 
+            requestAnimationFrame(renderScrollCube);
 
-        // --- Education Cube Scroll Rotation Logic ---
+            if (cubeRenderer && cubeScene && cubeCamera) {
 
-        function applyScrollRotation(cubeElement) {
+                cubeRenderer.render(cubeScene, cubeCamera);
 
-            const scrollY = window.scrollY;
-
-            const rotationSpeedX = 0.15;
-
-            const rotationSpeedY = 0.25;
-
-
-
-            const rotateX = (scrollY * rotationSpeedX);
-
-            const rotateY = (scrollY * rotationSpeedY);
-
-
-
-            cubeElement.style.transform = `
-
-                translateZ(-150px)
-
-                rotateX(${rotateX}deg)
-
-                rotateY(${rotateY}deg)
-
-            `;
+            }
 
         }
 
@@ -1202,43 +984,11 @@
 
         document.addEventListener('DOMContentLoaded', () => {
 
-            document.addEventListener('mousemove', (event) => {
-
-                mouseX = event.clientX;
-
-                mouseY = event.clientY;
-
-            });
-
-           
-
-            const scrollRotateCube = document.querySelector('.cube-container');
-
-            if (scrollRotateCube) {
-
-                applyScrollRotation(scrollRotateCube);
-
-            }
-
-
-
-            // Main Scroll Listener (used for cube rotation and nav)
-
-            window.addEventListener('scroll', () => {
-
-                if (scrollRotateCube) applyScrollRotation(scrollRotateCube);
-
-            });
-
-           
-
             if (!animationFrameIdPhysics) animatePhysics();
-
-
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            if (typeof THREE !== 'undefined') init3D();
+            if (typeof THREE !== 'undefined') initScrollCube();
 
 
 
