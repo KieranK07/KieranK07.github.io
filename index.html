@@ -160,6 +160,22 @@
 
         #scroll-cube-canvas canvas { display: block; }
 
+        /* --- EDUCATION PINNED SCROLL TRACK ---
+           The track is taller than the viewport; the inner pin sticks to the
+           top while you scroll through the extra height. That scroll distance
+           is what drives the cube->sphere morph (no wheel hijacking). */
+        .edu-track { height: 200vh; }
+        .edu-pin {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 1rem;
+        }
+
        
 
         /* --- RIPPLE, PHYSICS BUBBLE, CODE RAIN --- */
@@ -223,7 +239,7 @@
 
     <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
 
-        <div class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm">
+        <div id="hero-card" class="relative z-10 max-w-4xl text-center p-6 sm:p-10 bg-primary-dark/50 rounded-[2rem] backdrop-blur-sm">
 
             <h1 class="text-6xl sm:text-8xl font-extrabold tracking-tight leading-none mb-4 scroll-reveal">
 
@@ -255,28 +271,18 @@
 
    
 
-    <!-- 2. Education Section --><section id="education" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-
-        <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal relative z-10"><span class="text-accent-blue">Education</span></h2>
-
-       
-
-        <div class="max-w-2xl mx-auto p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card relative z-10" style="transition-delay: 0.1s;">
-
-            <h3 class="text-3xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
-
-            <p class="text-xl text-accent-neon mb-4">Bachelor of Science in Computer Science, Minor in Math and Software Engineering</p>
-
-            <div class="flex justify-between items-center border-t border-gray-700 pt-4">
-
-                <p class="text-lg text-gray-400">Freshman</p>
-
-                <p class="text-lg font-mono text-gray-300">Expected Graduation: 2029</p>
-
+    <!-- 2. Education Section (pinned scroll track for the cube->sphere morph) --><section id="education" class="edu-track relative">
+        <div class="edu-pin">
+            <h2 class="text-5xl font-bold text-center mb-12 scroll-reveal relative z-10"><span class="text-accent-blue">Education</span></h2>
+            <div id="edu-card" class="max-w-2xl w-full mx-auto p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card relative z-10" style="transition-delay: 0.1s;">
+                <h3 class="text-3xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
+                <p class="text-xl text-accent-neon mb-4">Bachelor of Science in Computer Science, Minor in Math and Software Engineering</p>
+                <div class="flex justify-between items-center border-t border-gray-700 pt-4">
+                    <p class="text-lg text-gray-400">Freshman</p>
+                    <p class="text-lg font-mono text-gray-300">Expected Graduation: 2029</p>
+                </div>
             </div>
-
         </div>
-
     </section>
 
 
@@ -695,99 +701,165 @@
 
        
 
-        // --- THREE.JS SCROLL-DRIVEN CUBE + MORPH ---
+        // --- THREE.JS SCROLL-DRIVEN CUBE -> SPHERE ---
         //
-        // State machine: 'scroll' -> 'morphing' <-> 'done'
-        //   scroll  : cube animated by hero->education scroll progress
-        //   morphing: scroll locked; wheel delta drives morph 0->1 (reversible)
-        //   done    : sphere on screen, page scroll free
+        // Everything is a pure function of window.scrollY, recomputed every
+        // animation frame. No wheel hijacking, no preventDefault, no listener
+        // juggling -> no scroll jank, and reverse-on-scroll-up is automatic.
         //
-        // Cube path: front face parallel to screen (square) rotates both
-        // horizontally and vertically, arriving at top face parallel to screen
-        // (another clean square) exactly when the Education section is reached.
+        // Timeline (scrollY):
+        //   [0 .. trackTop]              ROLL  : cube frames the hero card, then
+        //                                        tumbles down+clockwise and lands
+        //                                        framing the Education card.
+        //   [trackTop .. trackTop+pin]   MORPH : Education is pinned (sticky) and
+        //                                        centered; scroll drives the
+        //                                        cube->sphere morph 0->1.
+        //   beyond                       DONE  : sphere keeps framing the card as
+        //                                        it scrolls away; page scrolls on.
 
         let cubeRenderer, cubeScene, cubeCamera;
         let cubeMesh, cubeGlowMesh, cubeCorners, morphMesh;
         let cubeVertexPos, sphereVertexPos;
 
-        // State
-        let morphState      = 'scroll'; // 'scroll' | 'morphing' | 'done'
-        let morphProgress   = 0;
-        let morphWheelAccum = 0;
-        const MORPH_WHEEL_TOTAL = 1400; // wheel units needed to fully morph
-        let sphereSpinX = 0, sphereSpinY = 0; // accumulated auto-spin, survives state transitions
+        const CUBE_SIZE = 2.4;          // base geometry size (world units)
+        const CAM_Z     = 5;            // camera distance
+        const FOV       = 45;           // perspective fov (deg)
+        const FRAME_PAD = 1.05;         // cube side = max(card w,h) * this
+        const MORPH_LEAD = 0.0;         // morph starts immediately on lock
+        const MORPH_TAIL = 0.08;        // fraction of pin spent as a settled sphere
 
-        // Rotation the cube arrives at when Education is reached.
-        // rx = PI/2 tilts the top face parallel to the screen (clean square).
-        // ry = 0 so it lands as a perfect axis-aligned square.
-        const MORPH_ROT = { rx: Math.PI / 2, ry: 0, rz: 0 };
+        // Arrival rotation: top face toward camera, turned 90° to the right.
+        const MORPH_ROT = { rx: Math.PI / 2, ry: Math.PI / 2, rz: 0 };
 
-        // Keyframes for the scroll phase: front face -> top face.
-        // p = normalised scroll progress from hero top to education top.
-        // rx goes 0 -> PI/2 (tips cube back so top faces camera).
-        // ry arcs out then returns to 0 so the arrival is a clean square.
-        const CUBE_KF = [
-            { p: 0.00, rx: 0,            ry: 0    },
-            { p: 0.30, rx: 0.52,         ry: 0.70 },
-            { p: 0.60, rx: 1.10,         ry: 0.90 },
-            { p: 0.85, rx: 1.42,         ry: 0.35 },
-            { p: 1.00, rx: Math.PI / 2,  ry: 0    },
+        // Roll keyframes: smooth arc that tips the cube forward (rx: 0→π/2)
+        // while sweeping steadily to the right (ry: 0→π/2). No backtrack.
+        const ROLL_KF = [
+            { p: 0.00, rx: 0.00,        ry: 0.00,        rz: 0.00 },
+            { p: 0.40, rx: 0.70,        ry: 0.55,        rz: 0.00 },
+            { p: 0.75, rx: 1.30,        ry: 1.10,        rz: 0.00 },
+            { p: 1.00, rx: Math.PI / 2, ry: Math.PI / 2, rz: 0.00 },
         ];
 
-        // IDs of sections hidden until morph completes
-        const BELOW_EDU_IDS = ['experience', 'skills', 'projects', 'contact'];
+        let sphereSpin = 0; // gentle idle spin, scaled by morph amount so it never snaps
 
-        function hideBelowEducation() {
-            BELOW_EDU_IDS.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) { el.style.transition = 'opacity 0.6s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
-            });
-            const footer = document.querySelector('footer');
-            if (footer) { footer.style.transition = 'opacity 0.6s ease'; footer.style.opacity = '0'; footer.style.pointerEvents = 'none'; }
-        }
-
-        function revealBelowEducation() {
-            BELOW_EDU_IDS.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
-            });
-            const footer = document.querySelector('footer');
-            if (footer) { footer.style.opacity = '1'; footer.style.pointerEvents = 'auto'; }
-        }
-
-        // Utilities
+        // --- math helpers ---
         function lerpVal(a, b, t) { return a + (b - a) * t; }
+        function clamp01(t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
         function easeInOut(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
 
         function kfSample(kfs, p) {
-            p = Math.max(0, Math.min(1, p));
+            p = clamp01(p);
             let a = kfs[0], b = kfs[kfs.length - 1];
             for (let i = 0; i < kfs.length - 1; i++) {
                 if (p >= kfs[i].p && p <= kfs[i+1].p) { a = kfs[i]; b = kfs[i+1]; break; }
             }
             const t = b.p === a.p ? 1 : (p - a.p) / (b.p - a.p);
             const e = easeInOut(t);
-            return { rx: lerpVal(a.rx, b.rx, e), ry: lerpVal(a.ry, b.ry, e) };
+            return { rx: lerpVal(a.rx, b.rx, e), ry: lerpVal(a.ry, b.ry, e), rz: lerpVal(a.rz, b.rz, e) };
         }
 
-        // Returns 0->1 progress that reaches 1.0 exactly when Education hits
-        // mid-screen — the same instant the morph trigger fires — so the cube
-        // arrives at MORPH_ROT with zero discontinuity.
-        function getHeroEduProgress() {
-            const edu = document.getElementById('education');
-            if (!edu) return 0;
-            const scrollEnd = edu.offsetTop - window.innerHeight / 2;
-            return scrollEnd > 0 ? Math.max(0, Math.min(1, window.scrollY / scrollEnd)) : 0;
+        // Solve the cube's scale + screen->world placement so that its forward
+        // face projects to exactly `sidePx` pixels, centered on (cx, cy) in
+        // screen pixels. Accounts for perspective (front face is nearer than
+        // the cube centre), so the framing hugs the card tightly.
+        function frameCube(cx, cy, sidePx, rot, morphT) {
+            const W = window.innerWidth, H = window.innerHeight;
+            const k = Math.tan((FOV * Math.PI / 180) / 2);
+
+            // world side `w` of the front face whose projection == sidePx
+            const w = (2 * k * sidePx * CAM_Z) / (H + k * sidePx);
+            const scale = w / CUBE_SIZE;
+
+            // pixels-per-world-unit at the front-face plane
+            const D = CAM_Z - w / 2;
+            const pxPerWorld = H / (2 * D * k);
+
+            const worldX =  (cx - W / 2) / pxPerWorld;
+            const worldY = -(cy - H / 2) / pxPerWorld;
+
+            for (const obj of [cubeMesh, cubeGlowMesh, cubeCorners, morphMesh]) {
+                obj.position.set(worldX, worldY, 0);
+                obj.scale.setScalar(scale);
+            }
+            // Cube and sphere co-rotate during morph so they move as one.
+            const sx = sphereSpin * morphT;
+            const sy = sphereSpin * 0.4 * morphT;
+            for (const obj of [cubeMesh, cubeGlowMesh, cubeCorners, morphMesh]) {
+                obj.rotation.set(rot.rx + sx, rot.ry + sy, rot.rz);
+            }
+
+            applyMorph(morphT);
         }
 
-        // Initialise Three.js scene
+        // Morph vertices + cross-fade wireframe cube <-> morph mesh.
+        function applyMorph(t) {
+            const pos = morphMesh.geometry.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                pos.array[i*3]   = lerpVal(cubeVertexPos[i*3],   sphereVertexPos[i*3],   t);
+                pos.array[i*3+1] = lerpVal(cubeVertexPos[i*3+1], sphereVertexPos[i*3+1], t);
+                pos.array[i*3+2] = lerpVal(cubeVertexPos[i*3+2], sphereVertexPos[i*3+2], t);
+            }
+            pos.needsUpdate = true;
+
+            const cubeAlpha  = Math.max(0, 1 - t * 2);   // cube gone by t=0.5
+            const morphAlpha = Math.min(t * 2, 1);       // sphere in by t=0.5
+            cubeMesh.material.opacity     = cubeAlpha * 0.85;
+            cubeGlowMesh.material.opacity = cubeAlpha * 0.14;
+            cubeCorners.material.opacity  = cubeAlpha * 0.95;
+            morphMesh.material.opacity    = morphAlpha * 0.78;
+        }
+
+        function sideOf(el) {
+            return Math.max(el.offsetWidth, el.offsetHeight) * FRAME_PAD;
+        }
+
+        // The single source of truth: place the cube for the current scrollY.
+        function updateCube() {
+            if (!cubeMesh) return;
+            const hero  = document.getElementById('hero-card');
+            const card  = document.getElementById('edu-card');
+            const track = document.getElementById('education');
+            if (!hero || !card || !track) return;
+
+            const W = window.innerWidth, H = window.innerHeight;
+            const scrollY  = window.scrollY || window.pageYOffset;
+            const trackTop = track.offsetTop;
+            const pinDist  = Math.max(1, track.offsetHeight - H);
+
+            const trackBottom = trackTop + track.offsetHeight;
+            // Start fading 200px before the track ends so it's gone by the time
+            // Experience scrolls into view.
+            const FADE_START = trackBottom - 200;
+            const FADE_END   = trackBottom - 40;
+            const canvasOpacity = clamp01(1 - (scrollY - FADE_START) / (FADE_END - FADE_START));
+            cubeRenderer.domElement.style.opacity = canvasOpacity;
+
+            if (canvasOpacity <= 0) return;
+
+            if (scrollY <= trackTop) {
+                // ROLL phase
+                const p = easeInOut(clamp01(scrollY / trackTop));
+                const rot = kfSample(ROLL_KF, scrollY / trackTop);
+                const side = lerpVal(sideOf(hero), sideOf(card), p);
+                frameCube(W / 2, H / 2, side, rot, 0);
+            } else {
+                // MORPH / DONE phase: frame the sticky card
+                const r = card.getBoundingClientRect();
+                const cx = r.left + r.width / 2;
+                const cy = r.top + r.height / 2;
+                const pinProg = clamp01((scrollY - trackTop) / pinDist);
+                const morphT = clamp01((pinProg - MORPH_LEAD) / (1 - MORPH_LEAD - MORPH_TAIL));
+                frameCube(cx, cy, sideOf(card), MORPH_ROT, morphT);
+            }
+        }
+
         function initScrollCube() {
             const container = document.getElementById('scroll-cube-canvas');
             if (!container || typeof THREE === 'undefined') return;
 
             cubeScene  = new THREE.Scene();
-            cubeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-            cubeCamera.position.z = 5;
+            cubeCamera = new THREE.PerspectiveCamera(FOV, window.innerWidth / window.innerHeight, 0.1, 100);
+            cubeCamera.position.z = CAM_Z;
 
             cubeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             cubeRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -795,17 +867,18 @@
             cubeRenderer.setClearColor(0x000000, 0);
             container.appendChild(cubeRenderer.domElement);
 
-            const SIZE = 2.4;
-            const HALF = SIZE / 2;
+            const HALF = CUBE_SIZE / 2;
 
-            // Clean 12-edge wireframe cube
-            const edgesMat = new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.85 });
-            cubeMesh = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(SIZE, SIZE, SIZE)), edgesMat);
+            // 12-edge wireframe cube
+            cubeMesh = new THREE.LineSegments(
+                new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE)),
+                new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.85 }));
             cubeScene.add(cubeMesh);
 
-            // Glow halo (slightly larger, low opacity)
-            const glowMat = new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.14 });
-            cubeGlowMesh = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(SIZE * 1.06, SIZE * 1.06, SIZE * 1.06)), glowMat);
+            // Soft glow halo
+            cubeGlowMesh = new THREE.LineSegments(
+                new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBE_SIZE * 1.06, CUBE_SIZE * 1.06, CUBE_SIZE * 1.06)),
+                new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.14 }));
             cubeScene.add(cubeGlowMesh);
 
             // Corner accent dots
@@ -813,32 +886,28 @@
             for (const x of [-HALF, HALF]) for (const y of [-HALF, HALF]) for (const z of [-HALF, HALF]) cPos.push(x, y, z);
             const cornerGeo = new THREE.BufferGeometry();
             cornerGeo.setAttribute('position', new THREE.Float32BufferAttribute(cPos, 3));
-            cubeCorners = new THREE.Points(cornerGeo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.07, transparent: true, opacity: 0.95 }));
+            cubeCorners = new THREE.Points(cornerGeo,
+                new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.07, transparent: true, opacity: 0.95 }));
             cubeScene.add(cubeCorners);
 
             // Subdivided box that morphs to a sphere
-            const morphGeo  = new THREE.BoxGeometry(SIZE, SIZE, SIZE, 10, 10, 10);
-            const morphPos  = morphGeo.attributes.position;
-            cubeVertexPos   = morphPos.array.slice();
-            sphereVertexPos = new Float32Array(morphPos.count * 3);
-            const R = SIZE * 0.62;
-            for (let i = 0; i < morphPos.count; i++) {
+            const morphGeo = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 10, 10, 10);
+            const mp = morphGeo.attributes.position;
+            cubeVertexPos   = mp.array.slice();
+            sphereVertexPos = new Float32Array(mp.count * 3);
+            const R = CUBE_SIZE * 0.62;
+            for (let i = 0; i < mp.count; i++) {
                 const x = cubeVertexPos[i*3], y = cubeVertexPos[i*3+1], z = cubeVertexPos[i*3+2];
                 const len = Math.sqrt(x*x + y*y + z*z) || 1;
                 sphereVertexPos[i*3]   = (x / len) * R;
                 sphereVertexPos[i*3+1] = (y / len) * R;
                 sphereVertexPos[i*3+2] = (z / len) * R;
             }
-            morphMesh = new THREE.Mesh(morphGeo, new THREE.MeshBasicMaterial({ color: 0x2dd4bf, wireframe: true, transparent: true, opacity: 0 }));
+            morphMesh = new THREE.Mesh(morphGeo,
+                new THREE.MeshBasicMaterial({ color: 0x2dd4bf, wireframe: true, transparent: true, opacity: 0 }));
             cubeScene.add(morphMesh);
 
-            hideBelowEducation();
-
             window.addEventListener('resize', onCubeResize, { passive: true });
-            window.addEventListener('scroll', onScrollCube, { passive: true });
-            setupNavMorphHandlers();
-
-            updateScrollCube();
             renderScrollCube();
         }
 
@@ -849,183 +918,15 @@
             cubeRenderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // Scroll handler
-        function onScrollCube() {
-            if (morphState === 'done') {
-                // If user scrolled back up so Education re-enters view, re-lock for reverse morph
-                const edu = document.getElementById('education');
-                if (edu && edu.getBoundingClientRect().top >= window.innerHeight * 0.5) {
-                    morphState      = 'morphing';
-                    morphWheelAccum = MORPH_WHEEL_TOTAL; // start at fully morphed
-                    morphProgress   = 1;
-                    // Don't call applyMorphProgress here: morphMesh is already at
-                    // MORPH_ROT + current spin, so we leave it as-is to avoid a snap.
-                    hideBelowEducation();
-                    window.addEventListener('wheel',     onWheelLocked, { passive: false });
-                    window.addEventListener('touchmove', onWheelLocked, { passive: false });
-                }
-                return;
-            }
-            if (morphState !== 'scroll') return;
-
-            updateScrollCube();
-
-            // Lock scroll when Education reaches mid-screen
-            const edu = document.getElementById('education');
-            if (edu && edu.getBoundingClientRect().top <= window.innerHeight * 0.5) {
-                morphState      = 'morphing';
-                morphWheelAccum = 0;
-                morphProgress   = 0;
-                applyMorphProgress(0); // snap cube to MORPH_ROT, hide morph mesh
-                window.addEventListener('wheel',     onWheelLocked, { passive: false });
-                window.addEventListener('touchmove', onWheelLocked, { passive: false });
-            }
-        }
-
-        // Scroll-phase cube update (driven by hero->education progress)
-        function updateScrollCube() {
-            if (!cubeMesh || morphState !== 'scroll') return;
-            const { rx, ry } = kfSample(CUBE_KF, getHeroEduProgress());
-            for (const obj of [cubeMesh, cubeGlowMesh, cubeCorners]) {
-                obj.rotation.set(rx, ry, 0);
-                obj.scale.setScalar(1);
-            }
-            cubeMesh.material.opacity     = 0.85;
-            cubeGlowMesh.material.opacity = 0.14;
-            cubeCorners.material.opacity  = 0.95;
-            if (morphMesh) morphMesh.material.opacity = 0;
-        }
-
-        // Morph-phase wheel handler (bidirectional)
-        function onWheelLocked(e) {
-            e.preventDefault();
-            if (morphState !== 'morphing') return;
-
-            morphWheelAccum += e.deltaY;
-
-            if (morphWheelAccum < 0) {
-                // Scrolled back past the start: restore cube, unlock scroll
-                morphWheelAccum = 0;
-                morphProgress   = 0;
-                applyMorphProgress(0);
-                morphState = 'scroll';
-                window.removeEventListener('wheel',     onWheelLocked);
-                window.removeEventListener('touchmove', onWheelLocked);
-                return;
-            }
-
-            morphWheelAccum = Math.min(morphWheelAccum, MORPH_WHEEL_TOTAL);
-            morphProgress   = morphWheelAccum / MORPH_WHEEL_TOTAL;
-            applyMorphProgress(morphProgress);
-
-            if (morphProgress >= 1) {
-                morphState = 'done';
-                revealBelowEducation();
-                window.removeEventListener('wheel',     onWheelLocked);
-                window.removeEventListener('touchmove', onWheelLocked);
-            }
-        }
-
-        // Apply morph t in [0, 1]: 0 = cube, 1 = sphere
-        function applyMorphProgress(t) {
-            // Interpolate vertices cube -> sphere
-            const pos = morphMesh.geometry.attributes.position;
-            for (let i = 0; i < pos.count; i++) {
-                pos.array[i*3]   = lerpVal(cubeVertexPos[i*3],   sphereVertexPos[i*3],   t);
-                pos.array[i*3+1] = lerpVal(cubeVertexPos[i*3+1], sphereVertexPos[i*3+1], t);
-                pos.array[i*3+2] = lerpVal(cubeVertexPos[i*3+2], sphereVertexPos[i*3+2], t);
-            }
-            pos.needsUpdate = true;
-
-            // Cross-fade: cube fades out in first half, morph mesh fades in
-            const cubeAlpha  = Math.max(0, 1 - t * 2);
-            const morphAlpha = Math.min(t * 2, 1);
-            cubeMesh.material.opacity     = cubeAlpha * 0.85;
-            cubeGlowMesh.material.opacity = cubeAlpha * 0.14;
-            cubeCorners.material.opacity  = cubeAlpha * 0.95;
-            morphMesh.material.opacity    = morphAlpha * 0.75;
-
-            // Hold cube objects at MORPH_ROT; morph mesh carries spin offset
-            // weighted by t so the spin fades out cleanly when reversing.
-            for (const obj of [cubeMesh, cubeGlowMesh, cubeCorners]) {
-                obj.rotation.set(MORPH_ROT.rx, MORPH_ROT.ry, MORPH_ROT.rz);
-                obj.scale.setScalar(1);
-            }
-            morphMesh.rotation.set(MORPH_ROT.rx + sphereSpinX * t, MORPH_ROT.ry + sphereSpinY * t, MORPH_ROT.rz);
-            morphMesh.scale.setScalar(1);
-        }
-
-        // Nav-click handlers: skip or reverse the morph as needed
-        function setupNavMorphHandlers() {
-            const POST_MORPH = new Set(['experience', 'skills', 'projects', 'contact']);
-            const PRE_MORPH  = new Set(['hero']);
-
-            document.querySelectorAll('a[href^="#"]').forEach(link => {
-                link.addEventListener('click', e => {
-                    const targetId = (link.getAttribute('href') || '').slice(1);
-                    if (!targetId) return;
-
-                    if (POST_MORPH.has(targetId) && morphState !== 'done') {
-                        e.preventDefault();
-                        completeMorphNow();
-                        requestAnimationFrame(() => {
-                            const el = document.getElementById(targetId);
-                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                        });
-                    } else if (PRE_MORPH.has(targetId) && morphState !== 'scroll') {
-                        e.preventDefault();
-                        reverseMorphNow();
-                        requestAnimationFrame(() => {
-                            const el = document.getElementById(targetId);
-                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                        });
-                    }
-                    // 'education' -> no intervention; let normal scroll happen
-                });
-            });
-        }
-
-        function completeMorphNow() {
-            if (morphState === 'done') return;
-            window.removeEventListener('wheel',     onWheelLocked);
-            window.removeEventListener('touchmove', onWheelLocked);
-            morphWheelAccum = MORPH_WHEEL_TOTAL;
-            morphProgress   = 1;
-            applyMorphProgress(1);
-            morphState = 'done';
-            revealBelowEducation();
-        }
-
-        function reverseMorphNow() {
-            if (morphState === 'scroll') return;
-            window.removeEventListener('wheel',     onWheelLocked);
-            window.removeEventListener('touchmove', onWheelLocked);
-            morphWheelAccum = 0;
-            morphProgress   = 0;
-            applyMorphProgress(0);
-            morphState = 'scroll';
-            hideBelowEducation();
-            updateScrollCube();
-        }
-
-        // Render loop
+        // Render loop: advance idle spin, re-place the cube, draw.
         function renderScrollCube() {
             requestAnimationFrame(renderScrollCube);
-
-            // Once morphed, accumulate spin into offset vars; modulo to stay bounded.
-            // Applying via sphereSpinX/Y means the spin is preserved when reversing.
-            if (morphState === 'done' && morphMesh) {
-                sphereSpinY = (sphereSpinY + 0.003) % (Math.PI * 2);
-                sphereSpinX = (sphereSpinX + 0.001) % (Math.PI * 2);
-                morphMesh.rotation.set(MORPH_ROT.rx + sphereSpinX, MORPH_ROT.ry + sphereSpinY, MORPH_ROT.rz);
-            }
-
+            sphereSpin = (sphereSpin + 0.0008) % (Math.PI * 2);
+            updateCube();
             if (cubeRenderer && cubeScene && cubeCamera) {
                 cubeRenderer.render(cubeScene, cubeCamera);
             }
         }
-
-       
 
         // --- Navigation Highlighting Logic (Fixed Scroll-Based) ---
 
