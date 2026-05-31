@@ -1259,11 +1259,11 @@
         // --- CORE APPLICATION LOGIC ---
 
         // --- VISITOR COUNTER ---
-        fetch('https://api.countapi.xyz/hit/chadnerd.lol/pageviews')
+        fetch('https://api.counterapi.dev/v1/chadnerd.lol/pageviews/up')
             .then(r => r.json())
             .then(data => {
                 const el = document.getElementById('visitor-count');
-                if (el && data.value) el.textContent = data.value.toLocaleString();
+                if (el && data.count) el.textContent = data.count.toLocaleString();
             })
             .catch(() => {});
 
