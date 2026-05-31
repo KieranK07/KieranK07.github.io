@@ -621,6 +621,11 @@
 
         <p>&copy; 2026 Kieran Kelly.</p>
 
+        <p class="font-mono text-xs text-gray-600">
+            <span id="visitor-count-label">visitors:</span>
+            <span id="visitor-count" class="text-accent-neon ml-1">—</span>
+        </p>
+
     </footer>
 
 
@@ -1252,6 +1257,15 @@
 
 
         // --- CORE APPLICATION LOGIC ---
+
+        // --- VISITOR COUNTER ---
+        fetch('https://api.countapi.xyz/hit/chadnerd.lol/pageviews')
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('visitor-count');
+                if (el && data.value) el.textContent = data.value.toLocaleString();
+            })
+            .catch(() => {});
 
         document.addEventListener('DOMContentLoaded', () => {
 
