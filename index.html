@@ -190,6 +190,92 @@
 
         .bounce-bubble { position: fixed; z-index: 101; white-space: nowrap; padding: 8px 12px; border-radius: 9999px; font-weight: bold; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); pointer-events: none; transition: opacity 0.5s ease-out; }
 
+        /* --- EXPERIENCE RAILS --- */
+        .rail-row {
+            position: relative;
+            padding: 1rem 0;
+        }
+        /* Single rail line through the vertical centre of each card */
+        .rail-line {
+            position: absolute;
+            /* extend beyond the section's padding on both sides */
+            left: -3rem; right: -3rem;
+            top: 50%; transform: translateY(-50%);
+            height: 1px;
+            background: linear-gradient(to right,
+                transparent 0%,
+                rgba(45,212,191,0.55) 4%,
+                rgba(45,212,191,0.55) 96%,
+                transparent 100%);
+            box-shadow: 0 0 8px rgba(45,212,191,0.25);
+            pointer-events: none;
+        }
+        /* Square end-caps at the far ends of the extended rail */
+        .rail-endcaps {
+            position: absolute;
+            left: -3rem; right: -3rem;
+            top: 50%; height: 1px;
+            pointer-events: none;
+        }
+        .rail-endcaps::before,
+        .rail-endcaps::after {
+            content: '';
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            width: 6px; height: 6px;
+            background: #2dd4bf;
+            opacity: 0.55;
+            box-shadow: 0 0 8px rgba(45,212,191,0.6);
+        }
+        .rail-endcaps::before { left: 0; }
+        .rail-endcaps::after  { right: 0; }
+        /* Rail index number */
+        .rail-index {
+            position: absolute;
+            top: 4px; right: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            color: rgba(45,212,191,0.3);
+            pointer-events: none;
+            user-select: none;
+        }
+        /* Draggable card on the rail */
+        .rail-card {
+            position: relative;
+            width: 58%;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+            transition: filter 0.15s ease;
+        }
+        .rail-card.is-dragging { cursor: grabbing; }
+        .rail-card.is-dragging > .rail-card-inner {
+            border-color: rgba(45,212,191,0.55) !important;
+            box-shadow: 0 0 28px rgba(45,212,191,0.18), 0 16px 40px rgba(0,0,0,0.5) !important;
+        }
+        /* Grip dots on the side of each card */
+        .rail-grip {
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 4px;
+            pointer-events: none;
+        }
+        .rail-grip-left  { left: -18px; }
+        .rail-grip-right { right: -18px; }
+        .rail-grip span {
+            display: block;
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: rgba(45,212,191,0.35);
+        }
+        /* Mobile: full-width, no drag */
+        @media (max-width: 640px) {
+            .rail-card { width: 100%; cursor: default; }
+            .rail-grip { display: none; }
+            .rail-endcaps::before, .rail-endcaps::after { display: none; }
+        }
+
        
 
     </style>
@@ -287,70 +373,76 @@
 
 
 
-    <!-- 3. Experience Section --><section id="experience" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 relative overflow-hidden">
+    <!-- 3. Experience Section --><section id="experience" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 relative">
 
         <h2 class="text-5xl font-bold text-center mb-16 scroll-reveal relative z-10"><span class="text-accent-blue">Experience</span></h2>
 
-        <div class="max-w-3xl mx-auto space-y-8 relative z-10">
+        <div class="relative z-10" id="experience-rails">
 
-            <!-- Dynamic Campus --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.1s;">
-
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
-
-                    <h3 class="text-2xl font-bold text-white">IT Help Desk Technician</h3>
-
-                    <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">Feb 2025 – Present</span>
-
+            <!-- Rail 1: Dynamic Campus -->
+            <div class="rail-row scroll-reveal" style="transition-delay:0.1s">
+                <div class="rail-line"></div>
+                <div class="rail-endcaps"></div>
+                <div class="rail-index">01</div>
+                <div class="rail-card">
+                    <div class="rail-grip rail-grip-left"><span></span><span></span><span></span><span></span></div>
+                    <div class="rail-grip rail-grip-right"><span></span><span></span><span></span><span></span></div>
+                    <div class="rail-card-inner p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl skill-card">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+                            <h3 class="text-2xl font-bold text-white">IT Help Desk Technician</h3>
+                            <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">Feb 2025 – Present</span>
+                        </div>
+                        <p class="text-accent-neon font-semibold mb-4">Dynamic Campus &mdash; Steubenville, OH (On-site)</p>
+                        <p class="text-gray-300 mb-4">IT Support Intern providing helpdesk support across hardware, software, and networking for students and staff. Developed automation scripts to streamline routine tasks and maintained internal documentation to reduce recurring ticket volume.</p>
+                        <a href="https://dynamiccampus.com/" target="_blank" class="inline-flex items-center gap-1 text-sm text-accent-blue hover:text-accent-neon transition duration-300 font-mono">
+                            <i data-lucide="external-link" class="w-4 h-4"></i>dynamiccampus.com
+                        </a>
+                    </div>
                 </div>
-
-                <p class="text-accent-neon font-semibold mb-4">Dynamic Campus &mdash; Steubenville, OH (On-site)</p>
-
-                <p class="text-gray-300 mb-4">IT Support Intern providing helpdesk support across hardware, software, and networking for students and staff. Developed automation scripts to streamline routine tasks and maintained internal documentation to reduce recurring ticket volume.</p>
-
-                <a href="https://dynamiccampus.com/" target="_blank" class="inline-flex items-center gap-1 text-sm text-accent-blue hover:text-accent-neon transition duration-300 font-mono">
-                    <i data-lucide="external-link" class="w-4 h-4"></i>dynamiccampus.com
-                </a>
-
             </div>
 
-            <!-- SBS --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.2s;">
-
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
-
-                    <h3 class="text-2xl font-bold text-white">IT Infrastructure Intern</h3>
-
-                    <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">May 2026 – Aug 2026</span>
-
+            <!-- Rail 2: SBS -->
+            <div class="rail-row scroll-reveal" style="transition-delay:0.2s">
+                <div class="rail-line"></div>
+                <div class="rail-endcaps"></div>
+                <div class="rail-index">02</div>
+                <div class="rail-card">
+                    <div class="rail-grip rail-grip-left"><span></span><span></span><span></span><span></span></div>
+                    <div class="rail-grip rail-grip-right"><span></span><span></span><span></span><span></span></div>
+                    <div class="rail-card-inner p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl skill-card">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+                            <h3 class="text-2xl font-bold text-white">IT Infrastructure Intern</h3>
+                            <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">May 2026 – Aug 2026</span>
+                        </div>
+                        <p class="text-accent-neon font-semibold mb-4">Strategic Business Systems, Inc. (SBS) &mdash; Washington, DC Metro Area</p>
+                        <p class="text-gray-300 mb-4">Interning with a government compliance team at an IT services firm serving corporate, non-profit, and government clients. Gaining hands-on experience with Microsoft 365 security and authorization workflows in federal cloud environments. Work spans identity governance, security operations, and compliance automation across NIST, FedRAMP, and CMMC frameworks.</p>
+                        <a href="https://www.sbsplanet.com/" target="_blank" class="inline-flex items-center gap-1 text-sm text-accent-blue hover:text-accent-neon transition duration-300 font-mono">
+                            <i data-lucide="external-link" class="w-4 h-4"></i>sbsplanet.com
+                        </a>
+                    </div>
                 </div>
-
-                <p class="text-accent-neon font-semibold mb-4">Strategic Business Systems, Inc. (SBS) &mdash; Washington, DC Metro Area</p>
-
-                <p class="text-gray-300 mb-4">Interning with a government compliance team at an IT services firm serving corporate, non-profit, and government clients. Gaining hands-on experience with Microsoft 365 security and authorization workflows in federal cloud environments. Work spans identity governance, security operations, and compliance automation across NIST, FedRAMP, and CMMC frameworks.</p>
-
-                <a href="https://www.sbsplanet.com/" target="_blank" class="inline-flex items-center gap-1 text-sm text-accent-blue hover:text-accent-neon transition duration-300 font-mono">
-                    <i data-lucide="external-link" class="w-4 h-4"></i>sbsplanet.com
-                </a>
-
             </div>
 
-            <!-- DUNE --><div class="p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl scroll-reveal skill-card" style="transition-delay: 0.3s;">
-
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
-
-                    <h3 class="text-2xl font-bold text-white">Research Intern &mdash; AI &amp; Physics</h3>
-
-                    <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">May 2026 – Present</span>
-
+            <!-- Rail 3: DUNE -->
+            <div class="rail-row scroll-reveal" style="transition-delay:0.3s">
+                <div class="rail-line"></div>
+                <div class="rail-endcaps"></div>
+                <div class="rail-index">03</div>
+                <div class="rail-card">
+                    <div class="rail-grip rail-grip-left"><span></span><span></span><span></span><span></span></div>
+                    <div class="rail-grip rail-grip-right"><span></span><span></span><span></span><span></span></div>
+                    <div class="rail-card-inner p-8 border border-gray-700 bg-gray-800 rounded-[2rem] shadow-2xl skill-card">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+                            <h3 class="text-2xl font-bold text-white">Research Intern &mdash; AI &amp; Physics</h3>
+                            <span class="font-mono text-sm text-gray-400 mt-1 sm:mt-0">May 2026 – Present</span>
+                        </div>
+                        <p class="text-accent-neon font-semibold mb-4">DUNE Experiment &mdash; Remote (Fermilab, IL &amp; SURF, SD)</p>
+                        <p class="text-gray-300 mb-4">Working under Dr. Psihas in coordination with the Deep Underground Neutrino Experiment (DUNE) — a Fermilab-led international physics collaboration that fires neutrinos 1,300 km from Illinois to detectors a mile underground at the Sanford Underground Research Facility in South Dakota. Building an AI RAG (Retrieval-Augmented Generation) assistant to help researchers query and navigate the experiment's documentation and datasets.</p>
+                        <a href="https://www.dunescience.org/" target="_blank" class="inline-flex items-center gap-1 text-sm text-accent-blue hover:text-accent-neon transition duration-300 font-mono">
+                            <i data-lucide="external-link" class="w-4 h-4"></i>dunescience.org
+                        </a>
+                    </div>
                 </div>
-
-                <p class="text-accent-neon font-semibold mb-4">DUNE Experiment &mdash; Remote (Fermilab, IL &amp; SURF, SD)</p>
-
-                <p class="text-gray-300 mb-4">Working under Dr. Psihas in coordination with the Deep Underground Neutrino Experiment (DUNE) — a Fermilab-led international physics collaboration that fires neutrinos 1,300 km from Illinois to detectors a mile underground at the Sanford Underground Research Facility in South Dakota. Building an AI RAG (Retrieval-Augmented Generation) assistant to help researchers query and navigate the experiment's documentation and datasets.</p>
-
-                <a href="https://www.dunescience.org/" target="_blank" class="inline-flex items-center gap-1 text-sm text-accent-blue hover:text-accent-neon transition duration-300 font-mono">
-                    <i data-lucide="external-link" class="w-4 h-4"></i>dunescience.org
-                </a>
-
             </div>
 
         </div>
@@ -731,12 +823,10 @@
         // Arrival rotation: top face toward camera, turned 90° to the right.
         const MORPH_ROT = { rx: Math.PI / 2, ry: Math.PI / 2, rz: 0 };
 
-        // Roll keyframes: smooth arc that tips the cube forward (rx: 0→π/2)
-        // while sweeping steadily to the right (ry: 0→π/2). No backtrack.
+        // Two keyframes only — easeInOut applied once across the full motion
+        // so there are no mid-arc slowdowns at intermediate segment boundaries.
         const ROLL_KF = [
             { p: 0.00, rx: 0.00,        ry: 0.00,        rz: 0.00 },
-            { p: 0.40, rx: 0.70,        ry: 0.55,        rz: 0.00 },
-            { p: 0.75, rx: 1.30,        ry: 1.10,        rz: 0.00 },
             { p: 1.00, rx: Math.PI / 2, ry: Math.PI / 2, rz: 0.00 },
         ];
 
@@ -781,11 +871,9 @@
                 obj.position.set(worldX, worldY, 0);
                 obj.scale.setScalar(scale);
             }
-            // Cube and sphere co-rotate during morph so they move as one.
-            const sx = sphereSpin * morphT;
-            const sy = sphereSpin * 0.4 * morphT;
+            const s = sphereSpin * morphT;
             for (const obj of [cubeMesh, cubeGlowMesh, cubeCorners, morphMesh]) {
-                obj.rotation.set(rot.rx + sx, rot.ry + sy, rot.rz);
+                obj.rotation.set(rot.rx + s, rot.ry + s, rot.rz);
             }
 
             applyMorph(morphT);
@@ -813,6 +901,18 @@
             return Math.max(el.offsetWidth, el.offsetHeight) * FRAME_PAD;
         }
 
+        // Compute the card's center position when the pin is stuck (top:0).
+        // Uses the offsetParent chain so it matches getBoundingClientRect
+        // once sticky — eliminating the position jump at the phase boundary.
+        function stickyCardCenter() {
+            const card  = document.getElementById('edu-card');
+            const track = document.getElementById('education');
+            if (!card || !track) return { cx: window.innerWidth / 2, cy: window.innerHeight / 2 };
+            let top = 0, left = 0, el = card;
+            while (el && el !== track) { top += el.offsetTop; left += el.offsetLeft; el = el.offsetParent; }
+            return { cx: left + card.offsetWidth / 2, cy: top + card.offsetHeight / 2 };
+        }
+
         // The single source of truth: place the cube for the current scrollY.
         function updateCube() {
             if (!cubeMesh) return;
@@ -827,8 +927,6 @@
             const pinDist  = Math.max(1, track.offsetHeight - H);
 
             const trackBottom = trackTop + track.offsetHeight;
-            // Start fading 200px before the track ends so it's gone by the time
-            // Experience scrolls into view.
             const FADE_START = trackBottom - 200;
             const FADE_END   = trackBottom - 40;
             const canvasOpacity = clamp01(1 - (scrollY - FADE_START) / (FADE_END - FADE_START));
@@ -836,20 +934,29 @@
 
             if (canvasOpacity <= 0) return;
 
+            // Shared target: where the card sits when sticky. Both phases use
+            // this so there is no position discontinuity at the boundary.
+            const sc = stickyCardCenter();
+
             if (scrollY <= trackTop) {
-                // ROLL phase
+                // ROLL phase: lerp from viewport centre toward the sticky card centre.
                 const p = easeInOut(clamp01(scrollY / trackTop));
                 const rot = kfSample(ROLL_KF, scrollY / trackTop);
                 const side = lerpVal(sideOf(hero), sideOf(card), p);
-                frameCube(W / 2, H / 2, side, rot, 0);
+                const cx = lerpVal(W / 2, sc.cx, p);
+                const cy = lerpVal(H / 2, sc.cy, p);
+                frameCube(cx, cy, side, rot, 0);
             } else {
-                // MORPH / DONE phase: frame the sticky card
+                // MORPH / DONE phase: rotation continues scroll-driven in the
+                // same rx+ry direction as the roll (quarter-turn over full pin).
                 const r = card.getBoundingClientRect();
                 const cx = r.left + r.width / 2;
                 const cy = r.top + r.height / 2;
                 const pinProg = clamp01((scrollY - trackTop) / pinDist);
                 const morphT = clamp01((pinProg - MORPH_LEAD) / (1 - MORPH_LEAD - MORPH_TAIL));
-                frameCube(cx, cy, sideOf(card), MORPH_ROT, morphT);
+                const spinAngle = pinProg * (Math.PI / 2);
+                const rot = { rx: MORPH_ROT.rx + spinAngle, ry: MORPH_ROT.ry + spinAngle, rz: MORPH_ROT.rz };
+                frameCube(cx, cy, sideOf(card), rot, morphT);
             }
         }
 
@@ -921,11 +1028,59 @@
         // Render loop: advance idle spin, re-place the cube, draw.
         function renderScrollCube() {
             requestAnimationFrame(renderScrollCube);
-            sphereSpin = (sphereSpin + 0.0008) % (Math.PI * 2);
+            sphereSpin = 0;
             updateCube();
             if (cubeRenderer && cubeScene && cubeCamera) {
                 cubeRenderer.render(cubeScene, cubeCamera);
             }
+        }
+
+        // --- EXPERIENCE RAIL DRAG ---
+        function initRailDrag() {
+            document.querySelectorAll('.rail-row').forEach((row, i) => {
+                const card = row.querySelector('.rail-card');
+                if (!card || window.innerWidth <= 640) return;
+
+                let dragging = false, startX = 0, startLeft = 0, currentLeft = 0;
+
+                const clampLeft = (v) => Math.max(0, Math.min(row.offsetWidth - card.offsetWidth, v));
+
+                // Alternating start: even rows left, odd rows right
+                requestAnimationFrame(() => {
+                    currentLeft = i % 2 === 0 ? 0 : clampLeft(row.offsetWidth);
+                    card.style.left = currentLeft + 'px';
+                });
+
+                card.addEventListener('pointerdown', e => {
+                    dragging = true;
+                    startX = e.clientX;
+                    startLeft = currentLeft;
+                    card.setPointerCapture(e.pointerId);
+                    card.classList.add('is-dragging');
+                    e.preventDefault();
+                });
+
+                card.addEventListener('pointermove', e => {
+                    if (!dragging) return;
+                    currentLeft = clampLeft(startLeft + (e.clientX - startX));
+                    card.style.left = currentLeft + 'px';
+                });
+
+                const stopDrag = () => { dragging = false; card.classList.remove('is-dragging'); };
+                card.addEventListener('pointerup', stopDrag);
+                card.addEventListener('pointercancel', stopDrag);
+            });
+
+            // Re-clamp on resize
+            window.addEventListener('resize', () => {
+                document.querySelectorAll('.rail-row').forEach((row, i) => {
+                    const card = row.querySelector('.rail-card');
+                    if (!card) return;
+                    const max = row.offsetWidth - card.offsetWidth;
+                    const cur = parseFloat(card.style.left) || 0;
+                    card.style.left = Math.max(0, Math.min(max, cur)) + 'px';
+                });
+            }, { passive: true });
         }
 
         // --- Navigation Highlighting Logic (Fixed Scroll-Based) ---
@@ -1105,6 +1260,8 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             if (typeof THREE !== 'undefined') initScrollCube();
+
+            initRailDrag();
 
 
 
