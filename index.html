@@ -260,31 +260,6 @@
         }
         [data-magnet] { will-change: transform; }
 
-        /* ============ STATUS PILL ============ */
-        .status-pill {
-            display: inline-flex; align-items: center; gap: 8px;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
-            padding: 5px 14px; border-radius: 9999px;
-            color: #7dd3fc;
-            background: rgba(45,212,191,0.06);
-            border: 1px solid rgba(45,212,191,0.22);
-        }
-        .status-dot {
-            position: relative; flex-shrink: 0;
-            width: 7px; height: 7px; border-radius: 50%;
-            background: #2dd4bf;
-        }
-        .status-dot::after {
-            content: ''; position: absolute; inset: 0;
-            border-radius: 50%; background: #2dd4bf; opacity: 0.5;
-            animation: status-pulse 2.2s ease-out infinite;
-        }
-        @keyframes status-pulse {
-            0%   { transform: scale(1); opacity: 0.5; }
-            70%  { transform: scale(3); opacity: 0; }
-            100% { transform: scale(1); opacity: 0; }
-        }
-
         /* ============ TERMINAL CURSOR ============ */
         .cursor {
             display: inline-block; width: 2px; height: 0.9em;
@@ -524,13 +499,6 @@
     <section id="hero" class="relative min-h-screen flex items-center justify-center pt-20">
         <div id="hero-inner" class="relative z-10 max-w-3xl w-full text-center px-6 py-12 sm:py-16">
         <div id="hero-mouse">
-
-            <div class="h-rev flex justify-center mb-8" style="animation-delay:0.05s">
-                <span class="status-pill">
-                    <span class="status-dot"></span>
-                    open to research &amp; internships
-                </span>
-            </div>
 
             <p class="h-rev font-mono text-accent-neon/70 text-xs sm:text-sm tracking-widest mb-6 uppercase"
                style="animation-delay:0.18s">
