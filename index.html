@@ -4,17 +4,21 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Portfolio of Kieran Kelly — software developer & hardware hacker. AI, embedded systems, and security.">
+    <meta name="description" content="Kieran Kelly — CS student at Franciscan University. Systems and hardware projects in Rust, Swift and Go; research intern on the DUNE neutrino experiment.">
     <meta name="theme-color" content="#060b14">
+    <meta property="og:title" content="Kieran Kelly | Software Developer &amp; Hardware Hacker">
+    <meta property="og:description" content="Systems and hardware projects in Rust, Swift and Go. Research intern on the DUNE neutrino experiment.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://chadnerd.lol/">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50%25' y='50%25' font-size='90' fill='%232dd4bf' text-anchor='middle' dominant-baseline='central' font-family='Times New Roman, serif'%3EK%3C/text%3E%3C/svg%3E">
-    <title>Kieran Kelly | Software Developer & Hardware Hacker</title>
+    <title>Kieran Kelly | Software Developer &amp; Hardware Hacker</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@1.41.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
@@ -54,6 +58,12 @@
             outline: 2px solid rgba(45,212,191,0.6);
             outline-offset: 3px;
             border-radius: 4px;
+        }
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.86em; color: #7dd3fc;
+            background: rgba(56,189,248,0.08);
+            padding: 1px 5px; border-radius: 4px;
         }
 
         /* ============ BACKGROUND LAYERS ============ */
@@ -136,6 +146,12 @@
         .reveal.from-right { transform: translateX(44px); }
         .reveal.zoom       { transform: translateY(26px) scale(0.96); }
         .reveal.visible    { opacity: 1; transform: none; }
+        /* narrow screens: the timeline is a single rail and full-width, so a 44px slide would
+           poke past the viewport edge and count as horizontal overflow — keep it inside the gutter */
+        @media (max-width: 767px) {
+            .reveal.from-left  { transform: translateX(-16px); }
+            .reveal.from-right { transform: translateX(16px); }
+        }
 
         /* ============ HERO LOAD ANIMATIONS ============ */
         .h-rev {
@@ -208,6 +224,10 @@
             width: 48px; height: 2px; margin: 0.8rem auto 0;
             background: linear-gradient(90deg, #2dd4bf, #38bdf8);
             border-radius: 1px;
+        }
+        .sec-intro {
+            max-width: 34rem; margin: 1.1rem auto 0;
+            color: #64748b; font-size: 0.9rem; line-height: 1.65;
         }
         /* kicker tightens + rule draws itself when the section header reveals */
         .reveal .kicker {
@@ -293,7 +313,7 @@
             background: rgba(10,16,30,0.88);
             border: 1px solid rgba(148,163,184,0.09);
             border-radius: 1.1rem;
-            transition: border-color 0.3s ease, transform 0.3s ease;
+            transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
         }
         .card > * { position: relative; z-index: 1; }
         .card::before {
@@ -329,26 +349,134 @@
             color: #7dd3fc;
         }
 
-        /* ============ SKILL BARS ============ */
-        .skill-bar-track {
-            height: 3px; border-radius: 2px;
-            background: rgba(148,163,184,0.1);
-            overflow: hidden;
+        /* ============ FEATURED PROJECT — visual panel + copy ============ */
+        .feat { display: grid; grid-template-columns: minmax(0, 1fr); }
+        .feat-vis {
+            position: relative; overflow: hidden;
+            aspect-ratio: 16 / 9;
+            background: rgba(0,0,0,0.30);
+            border-bottom: 1px solid rgba(148,163,184,0.07);
         }
-        .skill-bar-fill {
+        .feat-vis > svg {
+            position: absolute; left: 0; top: 0; width: 100%; display: block;
+            height: calc(100% - 26px);   /* leaves a strip for the caption */
+        }
+        .feat-cap {
+            position: absolute; left: 14px; right: 14px; bottom: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.64rem; letter-spacing: 0.02em; line-height: 1.5;
+            color: #526075; pointer-events: none;
+        }
+        .feat-body { padding: 1.6rem 1.5rem 1.7rem; }
+        @media (min-width: 768px) {
+            .feat { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+            .feat-vis {
+                aspect-ratio: auto; min-height: 300px;
+                border-bottom: 0; border-right: 1px solid rgba(148,163,184,0.07);
+            }
+            .feat.flip .feat-vis { order: 2; border-right: 0; border-left: 1px solid rgba(148,163,184,0.07); }
+            .feat-body { padding: 2.1rem 2.25rem; }
+        }
+        .repo-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+            color: rgba(125,211,252,0.8); text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .repo-link svg { transition: transform 0.3s cubic-bezier(0.22,1,0.36,1); }
+        .repo-link:hover { color: #2dd4bf; }
+        .repo-link:hover svg { transform: translate(2px, -2px); }
+        .status-line {
+            display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #64748b;
+        }
+        .status-line b { font-weight: 500; color: rgba(45,212,191,0.7); }
+
+        /* — shared: dashed traffic lanes (backquest usb-c link, notables hand-offs) — */
+        .flow { fill: none; stroke-width: 1.6; stroke-dasharray: 5 11; stroke-linecap: round; }
+        .flow-r { stroke: rgba(45,212,191,0.85); animation: flow-r 1.1s linear infinite; }
+        .flow-l { stroke: rgba(56,189,248,0.80); animation: flow-l 1.4s linear infinite; }
+        @keyframes flow-r { to { stroke-dashoffset: -16; } }
+        @keyframes flow-l { to { stroke-dashoffset: 16; } }
+
+        /* — backquest diagram: wifi arcs breathing off the headset — */
+        .bq-lbl { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; fill: #64748b; letter-spacing: 0.04em; }
+        .bq-arc {
+            fill: none; stroke: #2dd4bf; stroke-width: 1.5; stroke-linecap: round;
+            opacity: 0.15;
+            animation: bq-wifi 2.1s ease-out infinite;
+            animation-delay: calc(var(--i) * 0.28s);
+        }
+        @keyframes bq-wifi { 0% { opacity: 0.12; } 30% { opacity: 0.9; } 100% { opacity: 0.12; } }
+
+        /* — Nexus dashboard: tiles populate on reveal, the sparkline draws, the pty cursor blinks — */
+        .nx-lbl  { font-family: 'JetBrains Mono', monospace; font-size: 7.5px; fill: #64748b; letter-spacing: 0.06em; }
+        .nx-code { font-family: 'JetBrains Mono', monospace; font-size: 8px; fill: #cbd5e1; }
+        .nx-tile {
+            opacity: 0; transform: translateY(6px);
+            transition: opacity 0.6s ease calc(var(--i) * 110ms + 0.25s),
+                        transform 0.6s cubic-bezier(0.22,1,0.36,1) calc(var(--i) * 110ms + 0.25s);
+        }
+        .reveal.visible .nx-tile { opacity: 1; transform: none; }
+        .nx-spark {
+            stroke-dasharray: 90; stroke-dashoffset: 90;
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.22,1,0.36,1) 0.8s;
+        }
+        .reveal.visible .nx-spark { stroke-dashoffset: 0; }
+        .nx-spark-dot { opacity: 0; transition: opacity 0.3s ease 1.9s; }
+        .reveal.visible .nx-spark-dot { opacity: 1; }
+        .nx-cur { animation: cur-blink 1.1s step-start infinite; }
+
+        /* — notables pipeline: a live waveform on the mac, note lines landing in the vault — */
+        .nt-lbl { font-family: 'JetBrains Mono', monospace; font-size: 7.5px; fill: #64748b; letter-spacing: 0.06em; }
+        .nt-md  { font-family: 'JetBrains Mono', monospace; font-size: 7.5px; fill: #2dd4bf; }
+        .nt-bar {
+            transform-box: fill-box; transform-origin: center;
+            animation: nt-wave 1s ease-in-out infinite alternate;
+            animation-delay: calc(var(--i) * -0.13s);
+        }
+        @keyframes nt-wave { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
+        .nt-line { opacity: 0; transition: opacity 0.5s ease calc(var(--i) * 90ms + 0.5s); }
+        .reveal.visible .nt-line { opacity: 1; }
+
+        /* ============ PROJECT INDEX — dense secondary tier ============ */
+        .idx-list { border-bottom: 1px solid rgba(148,163,184,0.08); }
+        .idx {
             position: relative;
-            height: 100%; width: 0%; border-radius: 2px;
-            background: linear-gradient(90deg, #2dd4bf, #38bdf8);
-            transition: width 1.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "name arrow" "lang arrow" "desc desc";
+            gap: 2px 14px;
+            padding: 15px 18px;
+            border-top: 1px solid rgba(148,163,184,0.08);
+            text-decoration: none;
+            transition: background 0.25s ease;
         }
-        .skill-bar-fill::after {
-            content: ''; position: absolute; inset: 0;
-            background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
-            transform: translateX(-100%);
-            animation: shimmer 3s ease-in-out 1.6s infinite;
+        .idx::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+            background: linear-gradient(#2dd4bf, #38bdf8);
+            transform: scaleY(0); transform-origin: top;
+            transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
         }
-        @keyframes shimmer { 55%, 100% { transform: translateX(100%); } }
+        .idx:hover { background: rgba(45,212,191,0.035); }
+        .idx:hover::before { transform: scaleY(1); }
+        .idx-name { grid-area: name; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #e2e8f0; }
+        .idx-lang { grid-area: lang; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #64748b; }
+        .idx-desc { grid-area: desc; color: #94a3b8; font-size: 0.875rem; line-height: 1.6; margin-top: 4px; }
+        .idx-arrow {
+            grid-area: arrow; align-self: start; margin-top: 4px;
+            color: #475569;
+            transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), color 0.3s ease;
+        }
+        .idx:hover .idx-arrow { color: #2dd4bf; transform: translate(2px, -2px); }
+        @media (min-width: 768px) {
+            .idx {
+                grid-template-columns: 11.5rem minmax(0, 1fr) auto;
+                grid-template-areas: "name desc arrow" "lang desc arrow";
+                align-items: start; gap: 2px 20px;
+            }
+            .idx-desc { margin-top: 0; }
+        }
 
         /* ============ EXPERIENCE TIMELINE ============ */
         .timeline { position: relative; padding: 0.5rem 0 0.25rem; }
@@ -378,6 +506,44 @@
             border-color: rgba(45,212,191,0.9);
             box-shadow: 0 0 14px rgba(45,212,191,0.55);
         }
+        .tl-head {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 6px 12px; margin-bottom: 0.7rem;
+        }
+        .tl-date {
+            display: inline-flex; align-items: center; gap: 7px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b;
+            white-space: nowrap;
+        }
+        .tl-tech {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; line-height: 1.7;
+            color: #526075; margin-bottom: 1rem;
+        }
+        /* one role gets the accent treatment (currently DUNE) */
+        .tl-entry.hot .card {
+            border-color: rgba(45,212,191,0.26);
+            box-shadow: 0 24px 70px -40px rgba(45,212,191,0.45);
+        }
+        .tl-entry.hot .card:hover { border-color: rgba(45,212,191,0.42); }
+        .xp-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+            color: rgba(45,212,191,0.85);
+            padding: 3px 10px; border-radius: 9999px;
+            border: 1px solid rgba(45,212,191,0.25);
+            background: rgba(45,212,191,0.05);
+        }
+        .status-dot {
+            position: relative; display: inline-block; flex-shrink: 0;
+            width: 6px; height: 6px; border-radius: 50%; background: #2dd4bf;
+        }
+        .status-dot::after {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%;
+            border: 1px solid rgba(45,212,191,0.7);
+            animation: ping 2s cubic-bezier(0,0,0.2,1) infinite;
+        }
+        @keyframes ping { 70%, 100% { transform: scale(2.4); opacity: 0; } }
         @media (min-width: 768px) {
             .tl-line { left: 50%; margin-left: -0.5px; }
             .tl-entry { width: 50%; padding-left: 0; }
@@ -385,6 +551,73 @@
             .tl-entry.tl-right { margin-left: 50%; padding-left: 3.25rem; }
             .tl-entry.tl-left .tl-dot  { left: auto; right: 0; transform: translateX(50%); }
             .tl-entry.tl-right .tl-dot { left: 0; transform: translateX(-50%); }
+        }
+
+        /* ============ ENCOGITO — typographic statement + service list ============ */
+        .enc { display: grid; grid-template-columns: minmax(0, 1fr); }
+        .enc-main { padding: 1.75rem 1.5rem 1.9rem; }
+        .enc-tag {
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+            letter-spacing: -0.02em; line-height: 1.05;
+            font-size: clamp(2rem, 5.2vw, 2.9rem); color: #f1f5f9;
+        }
+        .enc-services {
+            display: grid; grid-template-columns: 1fr 1fr;
+            border-top: 1px solid rgba(148,163,184,0.07);
+        }
+        .enc-services li {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 1.1rem 1.25rem;
+            border-top: 1px solid rgba(148,163,184,0.07);
+            border-left: 1px solid rgba(148,163,184,0.07);
+            opacity: 0; transform: translateY(10px);
+            transition: opacity 0.6s ease calc(var(--i) * 80ms + 0.2s),
+                        transform 0.6s cubic-bezier(0.22,1,0.36,1) calc(var(--i) * 80ms + 0.2s);
+        }
+        .enc-services li:nth-child(-n+2) { border-top: 0; }
+        .enc-services li:nth-child(odd)  { border-left: 0; }
+        .reveal.visible .enc-services li { opacity: 1; transform: none; }
+        .enc-k { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.14em; color: rgba(45,212,191,0.6); }
+        .enc-n { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1rem; color: #e2e8f0; }
+        .enc-d { color: #64748b; font-size: 0.78rem; line-height: 1.5; }
+        @media (min-width: 768px) {
+            .enc { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+            .enc-main { padding: 2.4rem 2.4rem; }
+            .enc-services {
+                grid-template-columns: 1fr;
+                border-top: 0; border-left: 1px solid rgba(148,163,184,0.07);
+            }
+            .enc-services li { border-left: 0; border-top: 1px solid rgba(148,163,184,0.07); justify-content: center; }
+            .enc-services li:first-child { border-top: 0; }
+        }
+
+        /* ============ TOOLKIT — config-file listing, each value links to code ============ */
+        .tk-row {
+            display: grid; grid-template-columns: 7.5rem minmax(0, 1fr);
+            gap: 3px 12px; padding: 10px 0;
+            border-top: 1px solid rgba(148,163,184,0.06);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.55;
+            opacity: 0; transform: translateX(-10px);
+            transition: opacity 0.6s ease calc(var(--i) * 70ms),
+                        transform 0.6s cubic-bezier(0.22,1,0.36,1) calc(var(--i) * 70ms);
+        }
+        .tk-row:first-child { border-top: 0; }
+        .reveal.visible .tk-row { opacity: 1; transform: none; }
+        .tk-key { color: #2dd4bf; }
+        .tk-key::after { content: ' ='; color: #475569; }
+        .tk-val { color: #94a3b8; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+        .tk-val a {
+            color: #e2e8f0;
+            text-decoration: underline dotted rgba(148,163,184,0.45);
+            text-underline-offset: 3px;
+            transition: color 0.2s ease;
+        }
+        .tk-val a:hover { color: #2dd4bf; }
+        .tk-note { grid-column: 2; color: #526075; font-size: 0.7rem; }
+        .tk-note::before { content: '# '; }
+        @media (max-width: 480px) {
+            .tk-row { grid-template-columns: minmax(0, 1fr); }
+            .tk-note { grid-column: 1; }
         }
 
         /* ============ CONTACT TERMINAL ============ */
@@ -410,6 +643,7 @@
             background: rgba(45,212,191,0.04);
             color: #e2e8f0;
         }
+        .brand { width: 1em; height: 1em; fill: currentColor; flex-shrink: 0; }
 
         /* ============ RIPPLE ============ */
         #ripple-container { position: fixed; inset: 0; pointer-events: none; z-index: 99; overflow: hidden; }
@@ -436,13 +670,17 @@
             #cursor-glow { display: none; }
             .reveal .kicker { transition: none; opacity: 1; letter-spacing: 0.24em; }
             .reveal .heading-rule { transition: none; width: 48px; }
-            .blob, .cue-line::after, .status-dot::after,
-            .cursor, .skill-bar-fill::after { animation: none; }
-            .skill-bar-fill { transition: none; }
+            .blob, .cue-line::after, .status-dot::after, .cursor,
+            .flow-r, .flow-l, .bq-arc, .nt-bar, .nx-cur { animation: none; }
+            .bq-arc { opacity: 0.6; }
+            .nx-tile, .nx-spark, .nx-spark-dot, .nt-line,
+            .tk-row, .enc-services li { transition: none; opacity: 1; transform: none; }
+            .nx-spark { stroke-dashoffset: 0; }
+            .idx::before, .idx-arrow, .repo-link svg { transition: none; }
             html { scroll-behavior: auto; }
         }
     </style>
-    <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+    <noscript><style>.reveal, .nx-tile, .nx-spark-dot, .nt-line, .tk-row, .enc-services li { opacity: 1; transform: none; } .nx-spark { stroke-dashoffset: 0; }</style></noscript>
 
 </head>
 <body>
@@ -484,10 +722,10 @@
                 <span class="text-slate-500">~/kieran</span><span class="text-accent-blue"> $ </span><span class="text-accent-neon font-bold">K.K.</span>
             </a>
             <div class="flex items-center gap-5 sm:gap-7">
-                <a href="#education"  class="nav-link hidden sm:inline">education</a>
-                <a href="#experience" class="nav-link hidden sm:inline">experience</a>
-                <a href="#skills"     class="nav-link">expertise</a>
                 <a href="#projects"   class="nav-link">projects</a>
+                <a href="#experience" class="nav-link">experience</a>
+                <a href="#encogito"   class="nav-link hidden sm:inline">encogito</a>
+                <a href="#toolkit"    class="nav-link hidden md:inline">toolkit</a>
                 <a href="#contact"    class="nav-link">contact</a>
             </div>
         </nav>
@@ -540,8 +778,8 @@
                 <a href="#projects" class="btn-primary" data-magnet>
                     <i data-lucide="terminal" class="w-4 h-4"></i>View Projects
                 </a>
-                <a href="#skills" class="btn-ghost" data-magnet>
-                    Explore<i data-lucide="arrow-down" class="w-4 h-4"></i>
+                <a href="#contact" class="btn-ghost" data-magnet>
+                    <i data-lucide="mail" class="w-4 h-4"></i>Get in touch
                 </a>
             </div>
 
@@ -554,7 +792,7 @@
                     <i data-lucide="graduation-cap" class="w-3 h-3 text-accent-neon/50"></i>CS @ Franciscan
                 </span>
                 <span class="flex items-center gap-1.5">
-                    <i data-lucide="cpu" class="w-3 h-3 text-accent-neon/50"></i>AI · Embedded · Security
+                    <i data-lucide="cpu" class="w-3 h-3 text-accent-neon/50"></i>Systems · Security · AI
                 </span>
             </div>
 
@@ -569,51 +807,336 @@
 
 
 
-    <!-- ── 2. EDUCATION ── -->
-    <section id="education" class="py-28 max-w-6xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
+    <!-- ── 2. PROJECTS ── -->
+    <section id="projects" class="py-24 sm:py-28 max-w-5xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
 
-        <div class="relative text-center mb-16 reveal z-10">
+        <div class="relative text-center mb-14 reveal z-10">
             <span class="sec-ghost" aria-hidden="true">01</span>
             <div class="relative">
-                <span class="kicker">// 01 — education</span>
-                <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">Education</h2>
+                <span class="kicker">// 01 — builds</span>
+                <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">Projects</h2>
                 <div class="heading-rule"></div>
+                <p class="sec-intro">Three in depth, the rest as an index. All of it is public on GitHub.</p>
             </div>
         </div>
 
-        <div class="max-w-xl mx-auto reveal relative z-10" style="transition-delay:0.1s">
-            <div class="card p-8">
-                <div class="flex items-center gap-2 mb-5 font-mono text-xs text-slate-600">
-                    <span class="w-2 h-2 rounded-full bg-accent-neon/60"></span>
-                    ~/education/franciscan.edu
-                </div>
-                <h3 class="font-display text-2xl font-bold text-white mb-2">Franciscan University of Steubenville</h3>
-                <p class="text-accent-neon/90 mb-6">
-                    B.S. Computer Science &mdash; Minor in Math &amp; Software Engineering
-                </p>
-                <div class="flex justify-between items-center border-t border-white/5 pt-4
-                            font-mono text-sm text-slate-500 mb-5">
-                    <span>Freshman</span>
-                    <span>Expected 2029</span>
-                </div>
-                <div class="bar-trigger" data-fill="20">
-                    <div class="flex justify-between font-mono text-[10px] text-slate-600 mb-1.5">
-                        <span>2025</span>
-                        <span class="text-slate-500 tracking-widest">degree progress</span>
-                        <span>2029</span>
-                    </div>
-                    <div class="skill-bar-track">
-                        <div class="skill-bar-fill"></div>
+        <div class="space-y-7 relative z-10">
+
+            <!-- backquest -->
+            <div class="reveal zoom">
+                <div class="card overflow-hidden">
+                    <div class="feat">
+                        <div class="feat-vis">
+                            <svg viewBox="0 0 320 180" aria-hidden="true">
+                                <!-- pc -->
+                                <rect x="24" y="50" width="88" height="58" rx="6" fill="none" stroke="rgba(148,163,184,0.35)" stroke-width="1.5"/>
+                                <rect x="31" y="57" width="74" height="40" rx="2" fill="rgba(56,189,248,0.06)"/>
+                                <rect x="54" y="110" width="28" height="5" rx="1" fill="rgba(148,163,184,0.22)"/>
+                                <line x1="42" y1="119" x2="94" y2="119" stroke="rgba(148,163,184,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+                                <text x="68" y="136" class="bq-lbl" text-anchor="middle">windows 11 · wintun</text>
+                                <!-- headset -->
+                                <rect x="216" y="60" width="82" height="46" rx="16" fill="none" stroke="rgba(148,163,184,0.35)" stroke-width="1.5"/>
+                                <rect x="228" y="72" width="22" height="22" rx="7" fill="rgba(45,212,191,0.10)" stroke="rgba(45,212,191,0.35)"/>
+                                <rect x="264" y="72" width="22" height="22" rx="7" fill="rgba(45,212,191,0.10)" stroke="rgba(45,212,191,0.35)"/>
+                                <path d="M216 83 h-6 M298 83 h6" stroke="rgba(148,163,184,0.25)" stroke-width="3" stroke-linecap="round"/>
+                                <text x="257" y="136" class="bq-lbl" text-anchor="middle">quest 3 · relay</text>
+                                <!-- usb-c link: base line + two dashed traffic lanes -->
+                                <line x1="112" y1="83" x2="216" y2="83" stroke="rgba(148,163,184,0.18)" stroke-width="1.5"/>
+                                <line class="flow flow-r" x1="112" y1="79" x2="216" y2="79"/>
+                                <line class="flow flow-l" x1="112" y1="87" x2="216" y2="87"/>
+                                <text x="164" y="70" class="bq-lbl" text-anchor="middle">usb-c · adb forward</text>
+                                <!-- wifi leaving the headset -->
+                                <g transform="translate(257 52)">
+                                    <circle r="2.2" fill="#2dd4bf"/>
+                                    <path class="bq-arc" style="--i:0" d="M-8 -6 a 11 11 0 0 1 16 0"/>
+                                    <path class="bq-arc" style="--i:1" d="M-14 -11 a 19 19 0 0 1 28 0"/>
+                                    <path class="bq-arc" style="--i:2" d="M-20 -16 a 27 27 0 0 1 40 0"/>
+                                </g>
+                            </svg>
+                            <span class="feat-cap">// pc → usb-c → quest 3 → wifi. dashes are traffic: teal out, blue back</span>
+                        </div>
+                        <div class="feat-body">
+                            <p class="font-mono text-xs text-slate-600 mb-3">~/backquest <span class="text-slate-700">·</span> rust</p>
+                            <h3 class="font-display text-2xl font-bold text-white mb-3">backquest</h3>
+                            <p class="text-slate-300 text-[15px] leading-relaxed mb-3">
+                                Gives a Windows 11 PC with no network of its own internet through a Quest 3's WiFi,
+                                over a USB-C cable.
+                            </p>
+                            <p class="text-slate-400 text-sm leading-relaxed mb-5">
+                                gnirehtet reverse-tethers a phone through a PC. backquest runs it the other way round:
+                                a <code>wintun</code> adapter on the PC captures the machine's traffic, and a relay on the
+                                headset, reached through <code>adb forward</code>, carries it out over the Quest's WiFi.
+                                Validated end to end on real hardware.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                <span class="chip">Rust</span>
+                                <span class="chip">wintun</span>
+                                <span class="chip">adb</span>
+                                <span class="chip">Quest 3</span>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/5">
+                                <span class="status-line"><b>status</b>works end to end on my hardware</span>
+                                <a href="https://github.com/KieranK07/backquest" target="_blank" rel="noopener" class="repo-link">
+                                    <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>KieranK07/backquest
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Nexus -->
+            <div class="reveal zoom">
+                <div class="card overflow-hidden">
+                    <div class="feat flip">
+                        <div class="feat-vis">
+                            <svg viewBox="0 0 320 180" aria-hidden="true">
+                                <!-- window -->
+                                <rect x="24" y="14" width="272" height="150" rx="8" fill="rgba(6,11,20,0.82)" stroke="rgba(148,163,184,0.35)" stroke-width="1.5"/>
+                                <rect x="25" y="15" width="270" height="14" fill="rgba(148,163,184,0.08)"/>
+                                <text x="34" y="25" class="nx-lbl">nexus</text>
+                                <text x="256" y="25" class="nx-lbl" text-anchor="end" style="fill:rgba(45,212,191,0.75)">passkey</text>
+                                <g transform="translate(268 22)" fill="none" stroke="#2dd4bf" stroke-width="1.4" stroke-linecap="round">
+                                    <circle cx="0" cy="0" r="3.2"/>
+                                    <path d="M3.2 0 h12 M10 0 v3.5 M14 0 v2.5"/>
+                                </g>
+                                <!-- mail -->
+                                <g class="nx-tile" style="--i:0">
+                                    <rect x="32" y="38" width="80" height="52" rx="4" fill="rgba(148,163,184,0.06)" stroke="rgba(148,163,184,0.12)"/>
+                                    <text x="38" y="48" class="nx-lbl">mail</text>
+                                    <rect x="38" y="55" width="60" height="4" rx="2" fill="rgba(148,163,184,0.22)"/>
+                                    <rect x="38" y="64" width="48" height="4" rx="2" fill="rgba(148,163,184,0.14)"/>
+                                    <rect x="38" y="73" width="66" height="4" rx="2" fill="rgba(148,163,184,0.14)"/>
+                                    <rect x="38" y="82" width="40" height="4" rx="2" fill="rgba(148,163,184,0.10)"/>
+                                </g>
+                                <!-- calendar -->
+                                <g class="nx-tile" style="--i:1">
+                                    <rect x="120" y="38" width="80" height="52" rx="4" fill="rgba(148,163,184,0.06)" stroke="rgba(148,163,184,0.12)"/>
+                                    <text x="126" y="48" class="nx-lbl">calendar</text>
+                                    <g fill="rgba(148,163,184,0.16)">
+                                        <rect x="126" y="55" width="7" height="7" rx="1"/><rect x="136" y="55" width="7" height="7" rx="1"/><rect x="146" y="55" width="7" height="7" rx="1"/><rect x="156" y="55" width="7" height="7" rx="1"/><rect x="166" y="55" width="7" height="7" rx="1"/><rect x="176" y="55" width="7" height="7" rx="1"/><rect x="186" y="55" width="7" height="7" rx="1"/>
+                                        <rect x="126" y="65" width="7" height="7" rx="1"/><rect x="136" y="65" width="7" height="7" rx="1"/><rect x="146" y="65" width="7" height="7" rx="1"/><rect x="156" y="65" width="7" height="7" rx="1" fill="#2dd4bf"/><rect x="166" y="65" width="7" height="7" rx="1"/><rect x="176" y="65" width="7" height="7" rx="1"/><rect x="186" y="65" width="7" height="7" rx="1"/>
+                                        <rect x="126" y="75" width="7" height="7" rx="1"/><rect x="136" y="75" width="7" height="7" rx="1"/><rect x="146" y="75" width="7" height="7" rx="1"/><rect x="156" y="75" width="7" height="7" rx="1"/><rect x="166" y="75" width="7" height="7" rx="1" fill="rgba(56,189,248,0.6)"/><rect x="176" y="75" width="7" height="7" rx="1"/><rect x="186" y="75" width="7" height="7" rx="1"/>
+                                    </g>
+                                </g>
+                                <!-- net worth -->
+                                <g class="nx-tile" style="--i:2">
+                                    <rect x="208" y="38" width="80" height="52" rx="4" fill="rgba(148,163,184,0.06)" stroke="rgba(148,163,184,0.12)"/>
+                                    <text x="214" y="48" class="nx-lbl">net worth</text>
+                                    <path class="nx-spark" d="M214 80 L226 76 L238 78 L250 70 L262 72 L274 62 L282 58" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle class="nx-spark-dot" cx="282" cy="58" r="2.2" fill="#2dd4bf"/>
+                                </g>
+                                <!-- home -->
+                                <g class="nx-tile" style="--i:3">
+                                    <rect x="32" y="98" width="80" height="56" rx="4" fill="rgba(148,163,184,0.06)" stroke="rgba(148,163,184,0.12)"/>
+                                    <text x="38" y="108" class="nx-lbl">home</text>
+                                    <rect x="38" y="116" width="22" height="10" rx="5" fill="rgba(45,212,191,0.35)"/><circle cx="55" cy="121" r="3.5" fill="#2dd4bf"/>
+                                    <rect x="38" y="132" width="22" height="10" rx="5" fill="rgba(148,163,184,0.18)"/><circle cx="43" cy="137" r="3.5" fill="rgba(148,163,184,0.5)"/>
+                                    <rect x="72" y="116" width="22" height="10" rx="5" fill="rgba(45,212,191,0.35)"/><circle cx="89" cy="121" r="3.5" fill="#2dd4bf"/>
+                                    <rect x="72" y="132" width="22" height="10" rx="5" fill="rgba(148,163,184,0.18)"/><circle cx="77" cy="137" r="3.5" fill="rgba(148,163,184,0.5)"/>
+                                </g>
+                                <!-- pty -->
+                                <g class="nx-tile" style="--i:4">
+                                    <rect x="120" y="98" width="168" height="56" rx="4" fill="rgba(0,0,0,0.35)" stroke="rgba(148,163,184,0.12)"/>
+                                    <text x="126" y="108" class="nx-lbl">pty</text>
+                                    <text x="126" y="122" class="nx-code"><tspan fill="#2dd4bf">$</tspan> whoami</text>
+                                    <text x="126" y="134" class="nx-code">kieran</text>
+                                    <text x="126" y="146" class="nx-code"><tspan fill="#2dd4bf">$</tspan></text>
+                                    <rect class="nx-cur" x="135" y="139" width="5" height="9" fill="#2dd4bf"/>
+                                </g>
+                            </svg>
+                            <span class="feat-cap">// mail, calendar, net worth, home, a browser pty. one user, passkey at the door</span>
+                        </div>
+                        <div class="feat-body">
+                            <p class="font-mono text-xs text-slate-600 mb-3">~/Nexus <span class="text-slate-700">·</span> go</p>
+                            <h3 class="font-display text-2xl font-bold text-white mb-3">Nexus</h3>
+                            <p class="text-slate-300 text-[15px] leading-relaxed mb-3">
+                                A self-hosted life dashboard for exactly one user, shipped as a single Go binary.
+                            </p>
+                            <p class="text-slate-400 text-sm leading-relaxed mb-5">
+                                Gmail, calendar, net worth, smart home and a browser PTY on one screen; the React front end
+                                is embedded with <code>go:embed</code> and state lives in SQLite. Security is the point:
+                                passkey-only WebAuthn login with a one-time Argon2id recovery code, secrets encrypted at rest
+                                with AES-256-GCM, an append-only audit log, and a server that binds to loopback and is reached
+                                only through a Cloudflare Tunnel. Money is integer cents; nothing in the running total is a float.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                <span class="chip">Go</span>
+                                <span class="chip">React</span>
+                                <span class="chip">SQLite</span>
+                                <span class="chip">WebAuthn</span>
+                                <span class="chip">Cloudflare Tunnel</span>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/5">
+                                <span class="status-line"><b>status</b>single user by design · about 15k lines of Go</span>
+                                <a href="https://github.com/KieranK07/Nexus" target="_blank" rel="noopener" class="repo-link">
+                                    <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>KieranK07/Nexus
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- notables -->
+            <div class="reveal zoom">
+                <div class="card overflow-hidden">
+                    <div class="feat">
+                        <div class="feat-vis">
+                            <svg viewBox="0 0 320 180" aria-hidden="true">
+                                <!-- mac, recording -->
+                                <rect x="16" y="52" width="64" height="50" rx="5" fill="rgba(6,11,20,0.8)" stroke="rgba(148,163,184,0.35)" stroke-width="1.5"/>
+                                <line x1="8" y1="106" x2="88" y2="106" stroke="rgba(148,163,184,0.3)" stroke-width="2" stroke-linecap="round"/>
+                                <g fill="#2dd4bf">
+                                    <rect class="nt-bar" style="--i:0" x="26" y="69" width="2.5" height="16" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:1" x="32" y="65" width="2.5" height="24" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:2" x="38" y="71" width="2.5" height="12" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:3" x="44" y="62" width="2.5" height="30" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:4" x="50" y="67" width="2.5" height="20" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:5" x="56" y="60" width="2.5" height="34" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:6" x="62" y="70" width="2.5" height="14" rx="1.25"/>
+                                    <rect class="nt-bar" style="--i:7" x="68" y="64" width="2.5" height="26" rx="1.25"/>
+                                </g>
+                                <text x="48" y="122" class="nt-lbl" text-anchor="middle">mac · record</text>
+                                <!-- mac -> pc -->
+                                <line x1="80" y1="77" x2="116" y2="77" stroke="rgba(148,163,184,0.18)" stroke-width="1.5"/>
+                                <line class="flow flow-r" x1="80" y1="77" x2="116" y2="77"/>
+                                <text x="98" y="66" class="nt-lbl" text-anchor="middle">tailscale</text>
+                                <!-- windows pc with a gpu -->
+                                <rect x="116" y="46" width="64" height="62" rx="5" fill="rgba(6,11,20,0.8)" stroke="rgba(148,163,184,0.35)" stroke-width="1.5"/>
+                                <rect x="132" y="61" width="32" height="32" rx="3" fill="rgba(45,212,191,0.08)" stroke="rgba(45,212,191,0.45)"/>
+                                <rect x="139" y="68" width="18" height="18" rx="2" fill="none" stroke="rgba(45,212,191,0.35)"/>
+                                <path d="M136 61 v-4 M144 61 v-4 M152 61 v-4 M160 61 v-4 M136 93 v4 M144 93 v4 M152 93 v4 M160 93 v4 M132 65 h-4 M132 73 h-4 M132 81 h-4 M132 89 h-4 M164 65 h4 M164 73 h4 M164 81 h4 M164 89 h4" stroke="rgba(45,212,191,0.35)" stroke-width="1"/>
+                                <text x="148" y="122" class="nt-lbl" text-anchor="middle">windows gpu</text>
+                                <text x="148" y="132" class="nt-lbl" text-anchor="middle">whisper large-v3</text>
+                                <!-- pc -> vault -->
+                                <line x1="180" y1="77" x2="220" y2="77" stroke="rgba(148,163,184,0.18)" stroke-width="1.5"/>
+                                <line class="flow flow-r" x1="180" y1="77" x2="220" y2="77"/>
+                                <text x="200" y="66" class="nt-lbl" text-anchor="middle">claude</text>
+                                <!-- the vault: a markdown note -->
+                                <path d="M226 42 h44 l16 16 v70 h-60 z" fill="rgba(6,11,20,0.8)" stroke="rgba(148,163,184,0.35)" stroke-width="1.5" stroke-linejoin="round"/>
+                                <path d="M270 42 v16 h16" fill="none" stroke="rgba(148,163,184,0.35)" stroke-width="1.5" stroke-linejoin="round"/>
+                                <text x="234" y="58" class="nt-md nt-line" style="--i:0"># notes</text>
+                                <rect class="nt-line" style="--i:1" x="234" y="66" width="40" height="3.5" rx="1.75" fill="rgba(148,163,184,0.25)"/>
+                                <rect class="nt-line" style="--i:2" x="234" y="74" width="46" height="3.5" rx="1.75" fill="rgba(148,163,184,0.18)"/>
+                                <rect class="nt-line" style="--i:3" x="234" y="82" width="34" height="3.5" rx="1.75" fill="rgba(148,163,184,0.18)"/>
+                                <rect class="nt-line" style="--i:4" x="234" y="94" width="44" height="3.5" rx="1.75" fill="rgba(148,163,184,0.18)"/>
+                                <rect class="nt-line" style="--i:5" x="234" y="102" width="30" height="3.5" rx="1.75" fill="rgba(148,163,184,0.14)"/>
+                                <rect class="nt-line" style="--i:6" x="234" y="110" width="42" height="3.5" rx="1.75" fill="rgba(148,163,184,0.14)"/>
+                                <text x="256" y="142" class="nt-lbl" text-anchor="middle">vault · markdown</text>
+                            </svg>
+                            <span class="feat-cap">// mac records, the pc's gpu transcribes, the note lands in the vault. a sleeping pc never costs a lecture</span>
+                        </div>
+                        <div class="feat-body">
+                            <p class="font-mono text-xs text-slate-600 mb-3">~/notables <span class="text-slate-700">·</span> swift + node</p>
+                            <h3 class="font-display text-2xl font-bold text-white mb-3">notables</h3>
+                            <p class="text-slate-300 text-[15px] leading-relaxed mb-3">
+                                Records a lecture on the Mac, transcribes it on a Windows GPU, and files it into a Markdown vault.
+                            </p>
+                            <p class="text-slate-400 text-sm leading-relaxed mb-5">
+                                A SwiftUI recorder hands the audio over Tailscale to a dependency-free Node server on the PC,
+                                which runs whisper large-v3 on CUDA and then has Claude file the transcript into the vault.
+                                A durable outbox and inbox mean a sleeping PC never costs a lecture; the transcript hits disk
+                                before any model is called; a per-course glossary feeds whisper's initial prompt; and any silent
+                                drop in quality has to show up in the UI.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                <span class="chip">Swift</span>
+                                <span class="chip">SwiftUI</span>
+                                <span class="chip">Node</span>
+                                <span class="chip">whisper</span>
+                                <span class="chip">Tailscale</span>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/5">
+                                <span class="status-line"><b>status</b>finished · in daily use</span>
+                                <a href="https://github.com/KieranK07/notables" target="_blank" rel="noopener" class="repo-link">
+                                    <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>KieranK07/notables
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- secondary tier: dense index -->
+        <div class="mt-16 relative z-10">
+            <div class="flex items-baseline justify-between gap-4 mb-3 px-1 reveal">
+                <h3 class="font-display text-lg font-semibold text-slate-200">Also on GitHub</h3>
+                <span class="font-mono text-xs text-slate-600">$ ls ~/projects</span>
+            </div>
+            <div class="idx-list">
+
+                <a class="idx reveal" style="transition-delay:0.02s" href="https://github.com/KieranK07/swarf" target="_blank" rel="noopener">
+                    <span class="idx-name">swarf</span>
+                    <span class="idx-lang">rust · wgpu</span>
+                    <span class="idx-desc">GPU falling-sand sandbox: a 4096 × 2048 world, 16 materials, stepping at 240 Hz. A Margolus block automaton so mass is conserved exactly, with chunks that go to sleep once they settle.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.06s" href="https://github.com/KieranK07/claudeyes" target="_blank" rel="noopener">
+                    <span class="idx-name">claudeyes</span>
+                    <span class="idx-lang">swift · python</span>
+                    <span class="idx-desc">Screen perception for a coding agent: predict the screen change an action should cause, subtract it from what actually happened, and wake the agent only on the unexplained residual.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.10s" href="https://github.com/KieranK07/class-royale" target="_blank" rel="noopener">
+                    <span class="idx-name">class-royale</span>
+                    <span class="idx-lang">next.js · typescript</span>
+                    <span class="idx-desc">Replaces my university's course portal. Scrapes the public catalog, and reads your own transcript client-side through a browser extension, so no server of mine ever holds a student's session.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.14s" href="https://github.com/KieranK07/fms-admin" target="_blank" rel="noopener">
+                    <span class="idx-name">fms-admin</span>
+                    <span class="idx-lang">go · react</span>
+                    <span class="idx-desc">Self-hosted admin panel for Minecraft servers: RCON console, provisioning, mods and backups, TOTP login.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.18s" href="https://github.com/KieranK07/roomba-controller" target="_blank" rel="noopener">
+                    <span class="idx-name">roomba-controller</span>
+                    <span class="idx-lang">python · openscad</span>
+                    <span class="idx-desc">Drives a real Roomba 690 over its serial Open Interface from a low-latency WASD web or TUI controller, with a Safe-mode watchdog and a parametric OpenSCAD mount.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.22s" href="https://github.com/KieranK07/authoritative-fps" target="_blank" rel="noopener">
+                    <span class="idx-name">authoritative-fps</span>
+                    <span class="idx-lang">javascript · three.js</span>
+                    <span class="idx-desc">Multiplayer browser FPS where the client only sends input: a 60 Hz authoritative server owns movement and does hit registration server-side, with real occlusion.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.26s" href="https://github.com/KieranK07/doordle" target="_blank" rel="noopener">
+                    <span class="idx-name">doordle</span>
+                    <span class="idx-lang">typescript · three.js</span>
+                    <span class="idx-desc">Daily browser delivery-racing game. One shared route a day; the deterministic sim is re-scored server-side by replaying your inputs.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+                <a class="idx reveal" style="transition-delay:0.30s" href="https://github.com/KieranK07/pcb-business-card" target="_blank" rel="noopener">
+                    <span class="idx-name">pcb-business-card</span>
+                    <span class="idx-lang">hardware · kicad</span>
+                    <span class="idx-desc">My business card is a two-layer PCB. The repo holds the Gerbers and drill files, ready to send to a fab; the KiCad sources aren't published.</span>
+                    <i data-lucide="arrow-up-right" class="idx-arrow w-3.5 h-3.5"></i>
+                </a>
+
+            </div>
+            <p class="mt-5 text-right reveal" style="transition-delay:0.34s">
+                <a href="https://github.com/KieranK07" target="_blank" rel="noopener" class="repo-link">
+                    everything else<i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                </a>
+            </p>
         </div>
     </section>
 
 
 
     <!-- ── 3. EXPERIENCE ── -->
-    <section id="experience" class="py-28 max-w-4xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
+    <section id="experience" class="py-24 sm:py-28 max-w-4xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
 
         <div class="relative text-center mb-16 reveal z-10">
             <span class="sec-ghost" aria-hidden="true">02</span>
@@ -624,27 +1147,44 @@
             </div>
         </div>
 
+        <!--
+            ENTRY TEMPLATE — to add a role, copy one .tl-entry block and edit its fields:
+              1. dates (.tl-head > .tl-date; keep the status-dot span only while ongoing; optional .xp-tag beside it)
+              2. title (h3)
+              3. org + place (p)            4. body (one or two <p>) + optional .tl-tech line
+              5. link (a)
+            Order is reverse-chronological. Alternate tl-left / tl-right (with reveal from-left /
+            from-right) as you go; the line-draw and dots handle any number of entries.
+            "hot" on a .tl-entry gives it the accent treatment (currently DUNE).
+        -->
         <div class="timeline relative z-10" id="timeline">
             <div class="tl-line"><div class="tl-line-fill" id="tl-fill"></div></div>
 
-            <!-- 01 — Dynamic Campus -->
-            <div class="tl-entry tl-left reveal from-left" style="transition-delay:0.05s">
+            <!-- 01 — DUNE -->
+            <div class="tl-entry tl-left hot reveal from-left" style="transition-delay:0.05s">
                 <span class="tl-dot"></span>
-                <div class="card p-7">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
-                        <h3 class="font-display text-lg font-semibold text-white">IT Help Desk Technician</h3>
-                        <span class="font-mono text-xs text-slate-500 shrink-0 sm:mt-1">Feb 2025 – Present</span>
+                <div class="card p-7 sm:p-8">
+                    <div class="tl-head">
+                        <span class="tl-date"><span class="status-dot"></span>May 2026 – Present</span>
+                        <span class="xp-tag">doe-funded research</span>
                     </div>
+                    <h3 class="font-display text-xl font-semibold text-white mb-1">Research Intern &mdash; AI &amp; Physics</h3>
                     <p class="text-accent-neon/80 text-sm font-medium mb-3">
-                        Dynamic Campus &mdash; Steubenville, OH
+                        DUNE Experiment &mdash; Fermilab, IL &amp; SURF, SD (remote)
                     </p>
-                    <p class="text-slate-400 text-sm mb-4 leading-relaxed">
-                        IT Support Intern providing helpdesk support across hardware, software, and networking.
-                        Developed automation scripts and maintained documentation to reduce recurring ticket volume.
+                    <p class="text-slate-400 text-sm mb-3 leading-relaxed">
+                        Under Dr. Psihas with the Deep Underground Neutrino Experiment &mdash; a Fermilab-led
+                        collaboration firing neutrinos 1,300 km underground. The project is ARID, a RAG pipeline
+                        over the experiment's documentation and datasets.
                     </p>
-                    <a href="https://dynamiccampus.com/" target="_blank" rel="noopener"
+                    <p class="text-slate-300 text-sm mb-4 leading-relaxed">
+                        My piece is the embedding and vector layer and its latency, plus concurrency evaluation
+                        of the live GPU stack.
+                    </p>
+                    <p class="tl-tech">RAG · embeddings · vector search · latency · GPU concurrency</p>
+                    <a href="https://www.dunescience.org/" target="_blank" rel="noopener"
                        class="inline-flex items-center gap-1.5 font-mono text-xs text-accent-blue/70 hover:text-accent-neon transition-colors">
-                        <i data-lucide="external-link" class="w-3 h-3"></i>dynamiccampus.com
+                        <i data-lucide="external-link" class="w-3 h-3"></i>dunescience.org
                     </a>
                 </div>
             </div>
@@ -653,18 +1193,24 @@
             <div class="tl-entry tl-right reveal from-right" style="transition-delay:0.05s">
                 <span class="tl-dot"></span>
                 <div class="card p-7">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
-                        <h3 class="font-display text-lg font-semibold text-white">IT Infrastructure Intern</h3>
-                        <span class="font-mono text-xs text-slate-500 shrink-0 sm:mt-1">May 2026 – Aug 2026</span>
+                    <div class="tl-head">
+                        <span class="tl-date"><span class="status-dot"></span>May 2026 – Present</span>
                     </div>
+                    <h3 class="font-display text-lg font-semibold text-white mb-1">IT Infrastructure &amp; Software Development Intern</h3>
                     <p class="text-accent-neon/80 text-sm font-medium mb-3">
-                        Strategic Business Systems (SBS) &mdash; Washington, DC Metro
+                        Strategic Business Systems (SBS) &mdash; Washington, DC Metro · remote since fall 2026
+                    </p>
+                    <p class="text-slate-400 text-sm mb-3 leading-relaxed">
+                        Built and deployed an internal tool that analyses developers' projects for known
+                        vulnerabilities, and started its integration into the company build pipeline. Also reviewed
+                        and improved the JSM onboarding and offboarding forms, and completed a knowledge-base audit
+                        with formal deliverable documents.
                     </p>
                     <p class="text-slate-400 text-sm mb-4 leading-relaxed">
-                        Government compliance team at an IT services firm. Hands-on experience with Microsoft 365
-                        security and authorization workflows in federal cloud. Spans identity governance, security
-                        operations, and compliance automation across NIST, FedRAMP, and CMMC.
+                        Started on the government compliance team: Microsoft 365 security and authorization
+                        workflows in federal cloud. Now remote, on software development.
                     </p>
+                    <p class="tl-tech">CMMC · FedRAMP · NIST SP 800-53 / 800-171 · RMF · ATO · CUI · Entra ID · Conditional Access · PIM · Purview · Sentinel · Intune · STIGs · GCC / GCC High</p>
                     <a href="https://www.sbsplanet.com/" target="_blank" rel="noopener"
                        class="inline-flex items-center gap-1.5 font-mono text-xs text-accent-blue/70 hover:text-accent-neon transition-colors">
                         <i data-lucide="external-link" class="w-3 h-3"></i>sbsplanet.com
@@ -672,190 +1218,266 @@
                 </div>
             </div>
 
-            <!-- 03 — DUNE -->
+            <!-- 03 — Clinic web rebuild (client work; client deliberately unnamed) -->
             <div class="tl-entry tl-left reveal from-left" style="transition-delay:0.05s">
                 <span class="tl-dot"></span>
                 <div class="card p-7">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
-                        <h3 class="font-display text-lg font-semibold text-white">Research Intern &mdash; AI &amp; Physics</h3>
-                        <span class="font-mono text-xs text-slate-500 shrink-0 sm:mt-1">May 2026 – Present</span>
+                    <div class="tl-head">
+                        <span class="tl-date"><span class="status-dot"></span>in progress</span>
                     </div>
+                    <h3 class="font-display text-lg font-semibold text-white mb-1">Web Rebuild for a Free Medical Clinic</h3>
                     <p class="text-accent-neon/80 text-sm font-medium mb-3">
-                        DUNE Experiment &mdash; Remote (Fermilab, IL &amp; SURF, SD)
+                        Client work &mdash; a free clinic serving uninsured patients in my area
                     </p>
                     <p class="text-slate-400 text-sm mb-4 leading-relaxed">
-                        Working under Dr. Psihas with the Deep Underground Neutrino Experiment — a Fermilab-led
-                        collaboration firing neutrinos 1,300 km underground. Building an AI RAG assistant to help
-                        researchers query and navigate the experiment's documentation and datasets.
+                        A full rebuild of the clinic's web presence, still underway: accessibility and SEO work,
+                        analytics with impact reporting, and patient-facing intake and appointment-request flows.
                     </p>
-                    <a href="https://www.dunescience.org/" target="_blank" rel="noopener"
+                    <p class="tl-tech">accessibility · SEO · analytics · impact reporting · intake and appointment requests</p>
+                </div>
+            </div>
+
+            <!-- 04 — Dynamic Campus -->
+            <div class="tl-entry tl-right reveal from-right" style="transition-delay:0.05s">
+                <span class="tl-dot"></span>
+                <div class="card p-7">
+                    <div class="tl-head">
+                        <span class="tl-date"><span class="status-dot"></span>Feb 2025 – Present</span>
+                    </div>
+                    <h3 class="font-display text-lg font-semibold text-white mb-1">IT Help Desk Technician</h3>
+                    <p class="text-accent-neon/80 text-sm font-medium mb-3">
+                        Dynamic Campus &mdash; Steubenville, OH
+                    </p>
+                    <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                        IT Support Intern providing helpdesk support across hardware, software, and networking.
+                        Developed automation scripts and maintained documentation to reduce recurring ticket volume.
+                    </p>
+                    <p class="tl-tech">hardware · software · networking · automation scripts · documentation</p>
+                    <a href="https://dynamiccampus.com/" target="_blank" rel="noopener"
                        class="inline-flex items-center gap-1.5 font-mono text-xs text-accent-blue/70 hover:text-accent-neon transition-colors">
-                        <i data-lucide="external-link" class="w-3 h-3"></i>dunescience.org
+                        <i data-lucide="external-link" class="w-3 h-3"></i>dynamiccampus.com
                     </a>
                 </div>
             </div>
 
         </div>
+
+        <!-- education + credentials, compact -->
+        <div class="mt-16 max-w-xl mx-auto reveal relative z-10" style="transition-delay:0.08s">
+            <div class="card p-6 sm:p-7">
+                <div class="flex items-center gap-2 mb-4 font-mono text-xs text-slate-600">
+                    <span class="w-2 h-2 rounded-full bg-accent-neon/60"></span>
+                    ~/education
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                    <h3 class="font-display text-lg font-semibold text-white">Franciscan University of Steubenville</h3>
+                    <span class="font-mono text-xs text-slate-500 shrink-0">2025 – 2029 (expected)</span>
+                </div>
+                <p class="text-accent-neon/80 text-sm mt-1">
+                    B.S. Computer Science &mdash; minor in Math &amp; Software Engineering
+                </p>
+
+                <div class="mt-5 pt-4 border-t border-white/5">
+                    <p class="font-mono text-[10px] tracking-[0.2em] uppercase text-slate-600 mb-2">credentials</p>
+                    <p class="text-slate-200 text-sm font-medium">Carb&oslash;n Engineer</p>
+                    <p class="text-slate-500 text-sm leading-relaxed mt-1">
+                        Internal certification from Strategic Business Systems: working with Carb&oslash;n, SBS's
+                        in-house tool, to bring government contractors up to NIST, CMMC and FedRAMP standards.
+                    </p>
+                </div>
+            </div>
+        </div>
     </section>
 
 
 
-    <!-- ── 4. EXPERTISE ── -->
-    <section id="skills" class="py-28 max-w-6xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
+    <!-- ── 4. ENCOGITO ── -->
+    <section id="encogito" class="py-24 sm:py-28 max-w-4xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
 
-        <div class="relative text-center mb-16 reveal z-10">
+        <div class="relative text-center mb-12 reveal z-10">
             <span class="sec-ghost" aria-hidden="true">03</span>
             <div class="relative">
-                <span class="kicker">// 03 — stack</span>
-                <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">Expertise</h2>
+                <span class="kicker">// 03 — studio</span>
+                <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">Encogito</h2>
                 <div class="heading-rule"></div>
+                <p class="sec-intro">My web design company. Custom websites for small business.</p>
             </div>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-
-            <!-- Python -->
-            <div class="reveal zoom" style="transition-delay:0.05s">
-                <div class="card p-7 h-full flex flex-col bar-trigger" data-fill="90">
-                    <p class="font-mono text-xs text-slate-600 mb-4">$ skill --load python</p>
-                    <h3 class="font-display text-2xl font-bold text-white mb-3">Python</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1">
-                        Advanced scripting, <strong class="text-slate-300">AI development</strong>,
-                        <strong class="text-slate-300">API integration</strong>, and
-                        <strong class="text-slate-300">game/UI</strong> applications.
-                    </p>
-                    <div class="flex justify-between font-mono text-xs text-slate-600 mb-2">
-                        <span>proficiency</span>
-                        <span class="text-accent-neon"><span class="count-up" data-count="90">0</span>%</span>
+        <div class="reveal zoom relative z-10" style="transition-delay:0.08s">
+            <div class="card overflow-hidden">
+                <div class="enc">
+                    <div class="enc-main">
+                        <p class="font-mono text-xs text-slate-600 mb-5">founder <span class="text-slate-700">·</span> encogito.com</p>
+                        <p class="enc-tag">Websites that <span class="serif-accent">actually fit.</span></p>
+                        <p class="text-slate-400 text-sm leading-relaxed mt-5 mb-7">
+                            Custom website design and development for small businesses. Hand-coded rather than
+                            templated, built for speed and for every screen. Clients own everything built for them:
+                            no long-term contracts, no vendor lock-in.
+                        </p>
+                        <a href="https://encogito.com" target="_blank" rel="noopener" class="btn-ghost" data-magnet>
+                            encogito.com<i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                        </a>
                     </div>
-                    <div class="skill-bar-track">
-                        <div class="skill-bar-fill"></div>
-                    </div>
+                    <ul class="enc-services">
+                        <li style="--i:0">
+                            <span class="enc-k">01</span>
+                            <span class="enc-n">Design</span>
+                            <span class="enc-d">custom, not picked from a template</span>
+                        </li>
+                        <li style="--i:1">
+                            <span class="enc-k">02</span>
+                            <span class="enc-n">Development</span>
+                            <span class="enc-d">hand-coded, built for speed and every device</span>
+                        </li>
+                        <li style="--i:2">
+                            <span class="enc-k">03</span>
+                            <span class="enc-n">SEO</span>
+                            <span class="enc-d">search engine optimisation</span>
+                        </li>
+                        <li style="--i:3">
+                            <span class="enc-k">04</span>
+                            <span class="enc-n">Care</span>
+                            <span class="enc-d">optional monthly plan: hosting, updates and edits</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
-
-            <!-- C++ -->
-            <div class="reveal zoom" style="transition-delay:0.13s">
-                <div class="card p-7 h-full flex flex-col bar-trigger" data-fill="75">
-                    <p class="font-mono text-xs text-slate-600 mb-4">$ skill --load cpp</p>
-                    <h3 class="font-display text-2xl font-bold text-white mb-3">C++</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1">
-                        <strong class="text-slate-300">Robotics</strong>,
-                        <strong class="text-slate-300">game development</strong>,
-                        <strong class="text-slate-300">backend servers</strong>, and
-                        performance-critical system programming.
-                    </p>
-                    <div class="flex justify-between font-mono text-xs text-slate-600 mb-2">
-                        <span>proficiency</span>
-                        <span class="text-accent-blue"><span class="count-up" data-count="75">0</span>%</span>
-                    </div>
-                    <div class="skill-bar-track">
-                        <div class="skill-bar-fill" style="background: linear-gradient(90deg,#38bdf8,#2dd4bf)"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pentesting -->
-            <div class="reveal zoom" style="transition-delay:0.21s">
-                <div class="card p-7 h-full flex flex-col bar-trigger" data-fill="80">
-                    <p class="font-mono text-xs text-slate-600 mb-4">$ skill --load pentest</p>
-                    <h3 class="font-display text-2xl font-bold text-white mb-3">Ethical Pentesting</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1">
-                        <strong class="text-slate-300">Linux</strong>,
-                        <strong class="text-slate-300">vulnerability assessment</strong>,
-                        <strong class="text-slate-300">Hack The Box</strong>, and
-                        network recon using <strong class="text-slate-300">Kali Linux</strong>.
-                    </p>
-                    <div class="flex justify-between font-mono text-xs text-slate-600 mb-2">
-                        <span>proficiency</span>
-                        <span class="text-teal-300"><span class="count-up" data-count="80">0</span>%</span>
-                    </div>
-                    <div class="skill-bar-track">
-                        <div class="skill-bar-fill" style="background: linear-gradient(90deg,#5eead4,#2dd4bf)"></div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </section>
 
 
 
-    <!-- ── 5. PROJECTS ── -->
-    <section id="projects" class="py-28 max-w-5xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
+    <!-- ── 5. TOOLKIT ── -->
+    <section id="toolkit" class="py-24 sm:py-28 max-w-3xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
 
-        <div class="relative text-center mb-16 reveal z-10">
+        <div class="relative text-center mb-12 reveal z-10">
             <span class="sec-ghost" aria-hidden="true">04</span>
             <div class="relative">
-                <span class="kicker">// 04 — builds</span>
-                <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">Projects</h2>
+                <span class="kicker">// 04 — toolkit</span>
+                <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">What I work in</h2>
                 <div class="heading-rule"></div>
+                <p class="sec-intro">Languages and tools by where they've been used. Every entry links to the code or the role behind it.</p>
             </div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-8 relative z-10">
+        <div class="reveal zoom relative z-10" style="transition-delay:0.1s">
+            <div class="card overflow-hidden">
+                <div class="term-bar">
+                    <span class="term-dot" style="background:#ef4444;opacity:.7"></span>
+                    <span class="term-dot" style="background:#facc15;opacity:.7"></span>
+                    <span class="term-dot" style="background:#4ade80;opacity:.7"></span>
+                    <span class="ml-3 font-mono text-xs text-slate-600">kieran@chadnerd:~ $ cat toolkit.conf</span>
+                </div>
+                <div class="px-6 py-5 sm:px-8 sm:py-6">
 
-            <!-- AI RC Car -->
-            <div class="reveal zoom" style="transition-delay:0.05s">
-                <div class="card p-8 h-full">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="flex items-center justify-center w-10 h-10 rounded-xl
-                                     bg-accent-blue/10 border border-accent-blue/20 text-accent-blue
-                                     transition-transform duration-300">
-                            <i data-lucide="car" class="w-4 h-4"></i>
+                    <div class="tk-row" style="--i:0">
+                        <span class="tk-key">rust</span>
+                        <span class="tk-val">
+                            <a href="https://github.com/KieranK07/backquest" target="_blank" rel="noopener">backquest</a>
+                            <a href="https://github.com/KieranK07/swarf" target="_blank" rel="noopener">swarf</a>
                         </span>
-                        <h3 class="font-display text-xl font-bold text-white">AI RC Car</h3>
+                        <span class="tk-note">networking, wgpu compute</span>
                     </div>
-                    <div class="flex flex-wrap gap-1.5 mb-4">
-                        <span class="chip">C++</span>
-                        <span class="chip">Python</span>
-                        <span class="chip">Jetson Nano</span>
-                        <span class="chip">Intel Realsense</span>
+
+                    <div class="tk-row" style="--i:1">
+                        <span class="tk-key">swift</span>
+                        <span class="tk-val">
+                            <a href="https://github.com/KieranK07/notables" target="_blank" rel="noopener">notables</a>
+                            <a href="https://github.com/KieranK07/claudeyes" target="_blank" rel="noopener">claudeyes</a>
+                        </span>
+                        <span class="tk-note">native macOS: SwiftUI, ScreenCaptureKit</span>
                     </div>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        Engineered an RC car using a <strong class="text-slate-300">NVIDIA Jetson Nano</strong>
-                        and <strong class="text-slate-300">Intel Realsense</strong> camera. On-board processing
-                        for obstacle avoidance and navigation, with custom
-                        <strong class="text-slate-300">3D-printed and CNC-milled parts</strong>,
-                        servo control, and battery management systems.
+
+                    <div class="tk-row" style="--i:2">
+                        <span class="tk-key">go</span>
+                        <span class="tk-val">
+                            <a href="https://github.com/KieranK07/Nexus" target="_blank" rel="noopener">Nexus</a>
+                            <a href="https://github.com/KieranK07/fms-admin" target="_blank" rel="noopener">fms-admin</a>
+                        </span>
+                        <span class="tk-note">self-hosted services, WebAuthn, TOTP, RCON</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:3">
+                        <span class="tk-key">typescript</span>
+                        <span class="tk-val">
+                            <a href="https://github.com/KieranK07/class-royale" target="_blank" rel="noopener">class-royale</a>
+                            <a href="https://github.com/KieranK07/doordle" target="_blank" rel="noopener">doordle</a>
+                            <a href="https://github.com/KieranK07/authoritative-fps" target="_blank" rel="noopener">authoritative-fps</a>
+                        </span>
+                        <span class="tk-note">next.js, browser extensions, three.js, netcode (the fps is plain js)</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:4">
+                        <span class="tk-key">python</span>
+                        <span class="tk-val">
+                            <a href="https://github.com/KieranK07/roomba-controller" target="_blank" rel="noopener">roomba-controller</a>
+                            <a href="https://github.com/KieranK07/claudeyes" target="_blank" rel="noopener">claudeyes</a>
+                        </span>
+                        <span class="tk-note">serial protocols, websockets, agent tooling</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:5">
+                        <span class="tk-key">hardware</span>
+                        <span class="tk-val">
+                            <a href="https://github.com/KieranK07/pcb-business-card" target="_blank" rel="noopener">pcb-business-card</a>
+                            <a href="https://github.com/KieranK07/roomba-controller" target="_blank" rel="noopener">roomba-controller</a>
+                            <a href="https://github.com/KieranK07/backquest" target="_blank" rel="noopener">backquest</a>
+                        </span>
+                        <span class="tk-note">KiCad, OpenSCAD, Roomba Open Interface, wintun + Quest 3</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:6">
+                        <span class="tk-key">web</span>
+                        <span class="tk-val">
+                            <a href="https://encogito.com" target="_blank" rel="noopener">Encogito</a>
+                            <a href="#experience">clinic rebuild</a>
+                            <a href="https://github.com/KieranK07/class-royale" target="_blank" rel="noopener">class-royale</a>
+                        </span>
+                        <span class="tk-note">hand-coded client sites; accessibility, SEO, analytics</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:7">
+                        <span class="tk-key">security</span>
+                        <span class="tk-val">
+                            <a href="#experience">vulnerability scanner at SBS</a>
+                            <a href="#experience">M365 / Entra ID hardening</a>
+                            <span>permission-based pentesting</span>
+                        </span>
+                        <span class="tk-note">Hack The Box, Kali. where I'm heading: offensive security</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:8">
+                        <span class="tk-key">ai</span>
+                        <span class="tk-val">
+                            <a href="#experience">RAG over DUNE's docs and datasets</a>
+                            <a href="https://github.com/KieranK07/claudeyes" target="_blank" rel="noopener">claudeyes</a>
+                            <a href="https://github.com/KieranK07/notables" target="_blank" rel="noopener">notables</a>
+                        </span>
+                        <span class="tk-note">embeddings and vector search, whisper on CUDA, agent perception</span>
+                    </div>
+
+                    <div class="tk-row" style="--i:9">
+                        <span class="tk-key">infra</span>
+                        <span class="tk-val">
+                            <a href="#experience">federal cloud compliance</a>
+                            <a href="#experience">help desk</a>
+                        </span>
+                        <span class="tk-note">NIST / FedRAMP / CMMC, Intune, Sentinel, Purview; Windows and Linux administration</span>
+                    </div>
+
+                    <p class="mt-5 font-mono text-[11px] text-slate-600">
+                        <span class="text-slate-700"># </span>no percentages. if it's listed, there's code or a role behind it.
                     </p>
                 </div>
             </div>
-
-            <!-- PCB Business Card -->
-            <div class="reveal zoom" style="transition-delay:0.13s">
-                <div class="card p-8 h-full">
-                    <div class="flex items-center gap-3 mb-4">
-                        <span class="flex items-center justify-center w-10 h-10 rounded-xl
-                                     bg-accent-neon/10 border border-accent-neon/20 text-accent-neon
-                                     transition-transform duration-300">
-                            <i data-lucide="cpu" class="w-4 h-4"></i>
-                        </span>
-                        <h3 class="font-display text-xl font-bold text-white">PCB Business Card</h3>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5 mb-4">
-                        <span class="chip">NFC</span>
-                        <span class="chip">PCB Design</span>
-                        <span class="chip">SMD LEDs</span>
-                        <span class="chip">Firmware</span>
-                    </div>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        Custom <strong class="text-slate-300">PCB business card</strong> with an
-                        <strong class="text-slate-300">NFC tag</strong> linking to this site and
-                        inductively-powered <strong class="text-slate-300">onboard LEDs</strong>
-                        that light up when tapped — demonstrating expertise in low-power electronics
-                        and physical-layer interaction.
-                    </p>
-                </div>
-            </div>
-
         </div>
     </section>
 
 
 
     <!-- ── 6. CONTACT ── -->
-    <section id="contact" class="py-28 max-w-6xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
+    <section id="contact" class="py-24 sm:py-28 max-w-6xl mx-auto px-5 sm:px-8 border-t border-white/5 relative">
 
         <div class="relative text-center mb-12 reveal z-10">
             <span class="sec-ghost" aria-hidden="true">05</span>
@@ -863,6 +1485,7 @@
                 <span class="kicker">// 05 — contact</span>
                 <h2 class="font-display text-4xl sm:text-[2.75rem] font-bold tracking-tight text-slate-100">Connect</h2>
                 <div class="heading-rule"></div>
+                <p class="sec-intro">Internships, research, a site for your business, or a question about one of the projects above. Email or LinkedIn both reach me.</p>
             </div>
         </div>
 
@@ -901,11 +1524,17 @@
                             +1 240 268 9430
                             <i data-lucide="copy" class="w-3 h-3 ml-auto opacity-30 group-hover:opacity-70 transition-opacity"></i>
                         </a>
+                        <a href="https://github.com/KieranK07" target="_blank" rel="noopener"
+                           class="contact-row group">
+                            <svg class="brand text-accent-neon/50" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                            github.com/KieranK07
+                            <i data-lucide="arrow-up-right" class="w-3 h-3 ml-auto opacity-30 group-hover:opacity-70 transition-opacity"></i>
+                        </a>
                     </div>
 
                     <a href="https://www.linkedin.com/in/kieran-kelly07/" target="_blank" rel="noopener"
                        class="btn-primary w-full justify-center" data-magnet>
-                        <i data-lucide="linkedin" class="w-4 h-4"></i>Connect on LinkedIn
+                        <svg class="brand" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>Connect on LinkedIn
                     </a>
                 </div>
             </div>
@@ -913,13 +1542,13 @@
 
         <!-- social row -->
         <div class="flex justify-center gap-8 mt-10 reveal relative z-10" style="transition-delay:0.18s">
-            <a href="https://github.com/kierank07" target="_blank" rel="noopener" data-magnet
+            <a href="https://github.com/KieranK07" target="_blank" rel="noopener" data-magnet aria-label="GitHub"
                class="inline-block text-slate-600 hover:text-accent-neon transition-colors duration-200">
-                <i data-lucide="github" class="w-6 h-6"></i>
+                <svg class="brand" style="width:1.5rem;height:1.5rem" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
             </a>
-            <a href="https://www.linkedin.com/in/kieran-kelly07/" target="_blank" rel="noopener" data-magnet
+            <a href="https://www.linkedin.com/in/kieran-kelly07/" target="_blank" rel="noopener" data-magnet aria-label="LinkedIn"
                class="inline-block text-slate-600 hover:text-accent-blue transition-colors duration-200">
-                <i data-lucide="linkedin" class="w-6 h-6"></i>
+                <svg class="brand" style="width:1.5rem;height:1.5rem" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
             </a>
         </div>
 
@@ -930,6 +1559,10 @@
     <!-- ── FOOTER ── -->
     <footer class="py-10 border-t border-white/5 text-center font-mono text-xs text-slate-700 space-y-2 relative z-10">
         <p class="text-slate-600">&lt;/kieran&gt;</p>
+        <p>one html file, no build step &mdash;
+            <a href="https://github.com/KieranK07/KieranK07.github.io" target="_blank" rel="noopener"
+               class="hover:text-accent-neon transition-colors">source</a>
+        </p>
         <p>&copy; 2026 Kieran Kelly &mdash; chadnerd.lol</p>
     </footer>
 
@@ -1024,11 +1657,13 @@
         // ── AMBIENT THREE.JS — wireframe icosahedron with orbital rings ─────
         //
         // One dim object, fixed behind the content, that idles slowly and
-        // responds to scroll + mouse. Quiet by design.
+        // responds to scroll + mouse. Quiet by design. A band of light walks
+        // over the vertex points (per-vertex colours, 240 verts, no shader).
 
         let amScene, amCam, amRenderer, amGroup, ringGroup, amHolder;
         let amBaseY = 0, amT = 0, amLast = 0;
         let mx = 0, my = 0, tmx = 0, tmy = 0;
+        let amPtsCol = null, amPtsPos = null;
 
         function makeRing(radius, color, opacity) {
             const N = 128, pts = [];
@@ -1067,6 +1702,19 @@
             amGroup.position.y = amBaseY + Math.sin(amT * 0.5) * 0.07;
             ringGroup.rotation.z = Math.sin(amT * 0.25) * 0.18;
 
+            // light band travelling over the vertices, top to bottom
+            if (amPtsCol) {
+                const c = amPtsCol.array, p = amPtsPos;
+                for (let i = 0; i < c.length; i += 3) {
+                    const w = 0.5 + 0.5 * Math.sin(p[i + 1] * 2.4 - amT * 1.3 + p[i] * 0.5);
+                    const b = 0.18 + 0.82 * w * w * w;
+                    c[i]     = 0.10 + 0.20 * b;
+                    c[i + 1] = 0.40 + 0.45 * b;
+                    c[i + 2] = 0.42 + 0.58 * b;
+                }
+                amPtsCol.needsUpdate = true;
+            }
+
             amRenderer.render(amScene, amCam);
         }
 
@@ -1078,7 +1726,9 @@
             amCam = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50);
             amCam.position.z = 6;
 
-            amRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            // no WebGL (old GPU, disabled in settings, headless): the page is fine without it
+            try { amRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); }
+            catch (_) { amRenderer = null; return; }
             amRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             amRenderer.setSize(window.innerWidth, window.innerHeight);
             amRenderer.setClearColor(0x000000, 0);
@@ -1090,8 +1740,12 @@
             amGroup.add(new THREE.LineSegments(
                 new THREE.EdgesGeometry(icoGeo),
                 new THREE.LineBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.30 })));
+
+            amPtsPos = icoGeo.attributes.position.array;
+            amPtsCol = new THREE.Float32BufferAttribute(new Float32Array(amPtsPos.length), 3);
+            icoGeo.setAttribute('color', amPtsCol);
             amGroup.add(new THREE.Points(icoGeo,
-                new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.045, transparent: true, opacity: 0.6 })));
+                new THREE.PointsMaterial({ vertexColors: true, size: 0.05, transparent: true, opacity: 0.85 })));
 
             ringGroup = new THREE.Group();
             ringGroup.add(makeRing(2.0,  0x2dd4bf, 0.14));
@@ -1256,19 +1910,6 @@
         }
 
 
-        // ── COUNT-UP ─────────────────────────────────────────────────────────
-
-        function countUp(el, target, dur = 1300) {
-            if (REDUCED) { el.textContent = target; return; }
-            const t0 = performance.now();
-            (function frame(now) {
-                const p = Math.min((now - t0) / dur, 1);
-                el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
-                if (p < 1) requestAnimationFrame(frame);
-            })(t0);
-        }
-
-
         // ── HEADER LOGO RIPPLE ───────────────────────────────────────────────
 
         function initRipple() {
@@ -1294,11 +1935,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            initAmbient();
-            initCardFX();
-            initCursorFX();
-            initMagnets();
-            initRipple();
+            // each effect is optional; one failing must not take the rest of the page with it
+            [initAmbient, initCardFX, initCursorFX, initMagnets, initRipple].forEach(f => {
+                try { f(); } catch (err) { console.warn(f.name + ' skipped:', err); }
+            });
 
             // cache scroll-UI elements
             els.progress  = $('#scroll-progress');
@@ -1326,20 +1966,6 @@
                 });
             }, { threshold: 0.12 });
             $$('.reveal').forEach(el => ro.observe(el));
-
-            // bars + counters on scroll into view
-            const bo = new IntersectionObserver((entries, obs) => {
-                entries.forEach(e => {
-                    if (!e.isIntersecting) return;
-                    const el = e.target;
-                    const fill = el.querySelector('.skill-bar-fill');
-                    if (fill) fill.style.width = (el.dataset.fill || 0) + '%';
-                    const counter = el.querySelector('.count-up');
-                    if (counter) countUp(counter, parseInt(counter.dataset.count, 10) || 0);
-                    obs.unobserve(el);
-                });
-            }, { threshold: 0.35 });
-            $$('.bar-trigger').forEach(el => bo.observe(el));
         });
 
     </script>
